@@ -19,7 +19,7 @@ build/
 
 # IDE files
 #.vscode/
-!.vscode/settings.json
+.vscode/mcp.json
 .idea/
 *.swp
 *.swo
@@ -76,3 +76,4 @@ jspm_packages/
 .yarn-integrity
 
 # Extra
+docs/ArchiveNET.md
