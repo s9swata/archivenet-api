@@ -18,10 +18,12 @@ build/
 .env.production.local
 
 # IDE files
-.vscode/
+#.vscode/
+!.vscode/settings.json
 .idea/
 *.swp
 *.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -74,4 +76,3 @@ jspm_packages/
 .yarn-integrity
 
 # Extra
-!.vscode/extensions.json
