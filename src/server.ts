@@ -34,8 +34,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cors(corsOptions));
 app.use(helmet());
 
-app.use(errorHandler);
-
 app.get("/", (req, res) => {
 	res.send("This is the Backend API for ArchiveNET");
 });
@@ -43,6 +41,8 @@ app.get("/", (req, res) => {
 app.get("/health", (_req, res) => {
 	res.send("API is up and running!");
 });
+
+app.use(errorHandler);
 
 app
 	.listen(PORT, () => {
