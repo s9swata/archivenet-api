@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
 import { errorHandler } from "./middlewares/errorHandler.js";
+import { auth } from "./middlewares/auth.js";
 
 dotenv.config();
 
@@ -40,6 +41,14 @@ app.get("/", (req, res) => {
 
 app.get("/health", (_req, res) => {
 	res.send("API is up and running!");
+});
+
+app.get("/test", auth, (req, res) => {
+	console.log("User ID:", req.userId);
+	res.json({
+		message: "This is a test route",
+		userId: req.userId,
+	});
 });
 
 app.use(errorHandler);

@@ -234,3 +234,231 @@
 - **Features**: Aggregated metrics, summaries, trend data
 
 ---
+
+## **4. ANALYTICS.TS - Comprehensive Analytics & Monitoring**
+
+### **Base Configuration Schemas:**
+
+**`analyticsTimeRangeSchema`**
+
+- **Function**: Standardizes time period definitions across all analytics
+- **ArchiveNET Use**: Dashboard time filters, report generation, trend analysis
+- **Features**:
+  - **Period**: Predefined intervals (hour/day/week/month/quarter/year)
+  - **Custom Range**: Optional start/end dates for specific periods
+  - **Timezone**: UTC default with timezone-aware calculations
+  - **Validation**: Ensures end date is after start date
+
+**`analyticsAggregationSchema`**
+
+- **Function**: Defines how data should be grouped and measured
+- **ArchiveNET Use**: Flexible data aggregation for different dashboard views
+- **Features**:
+  - **GroupBy**: Multiple dimensions (date, category, source, aiAgent, user, tag)
+  - **Metrics**: Performance indicators (count, storage, costs, response times)
+  - **Validation**: Requires at least one metric, prevents empty aggregations
+
+### **Memory Analytics:**
+
+**`memoryAnalyticsSchema`**
+
+- **Function**: Comprehensive memory usage and performance tracking
+- **ArchiveNET Use**: Memory lifecycle analysis, storage optimization, user insights
+- **Features**:
+  - **User Filtering**: Per-user or system-wide analytics
+  - **Source Tracking**: MCP vs API vs web usage patterns
+  - **Category Analysis**: Content categorization trends
+  - **Importance Metrics**: Memory significance distribution
+  - **Status Monitoring**: Active/archived/deleted memory lifecycle
+  - **Breakdown Options**: Detailed drill-down capabilities
+
+**`memoryAnalyticsResponseSchema`**
+
+- **Function**: Rich memory analytics dashboard data
+- **ArchiveNET Use**: Memory management insights, optimization recommendations
+- **Features**:
+  - **Time Series**: Historical memory creation/access patterns
+  - **Summary Stats**: Total memories, storage usage, average importance
+  - **Growth Metrics**: Memory creation rate and trends
+  - **Top Categories/Sources**: Most used content types and input methods
+  - **Alert System**: Threshold-based warnings for unusual patterns
+
+### **Usage Analytics:**
+
+**`usageAnalyticsSchema`**
+
+- **Function**: API and system usage monitoring
+- **ArchiveNET Use**: Performance monitoring, quota management, billing calculations
+- **Features**:
+  - **Endpoint Tracking**: Per-endpoint usage statistics
+  - **Operation Types**: Memory operations, searches, vector operations
+  - **Performance Metrics**: Response times, error rates
+  - **Resource Usage**: Storage and bandwidth consumption
+  - **Cost Analysis**: Operation-based cost tracking
+
+**`usageAnalyticsResponseSchema`**
+
+- **Function**: Usage dashboard and billing data
+- **ArchiveNET Use**: User dashboards, quota enforcement, billing reports
+- **Features**:
+  - **API Statistics**: Total calls, average response times, error rates
+  - **Top Endpoints**: Most used API endpoints with performance data
+  - **Quota Monitoring**: Current usage vs limits with percentage tracking
+  - **Performance Insights**: Response time trends and bottlenecks
+
+### **Performance Analytics:**
+
+**`performanceAnalyticsSchema`**
+
+- **Function**: System performance and SLA monitoring
+- **ArchiveNET Use**: Infrastructure monitoring, performance optimization, uptime tracking
+- **Features**:
+  - **System Metrics**: Response time, throughput, error rate, availability
+  - **Resource Monitoring**: Memory usage, CPU usage, database performance
+  - **Cache Analytics**: Hit rates and performance impact
+  - **Aggregation Types**: Statistical aggregations (avg, min, max, percentiles)
+  - **Alert Integration**: Performance threshold monitoring
+
+**`performanceAnalyticsResponseSchema`**
+
+- **Function**: System health dashboard data
+- **ArchiveNET Use**: Operations monitoring, SLA compliance, capacity planning
+- **Features**:
+  - **Performance Summary**: Key metrics overview with SLA compliance
+  - **Alert Management**: Active alerts with severity levels and thresholds
+  - **Trend Analysis**: Historical performance patterns
+  - **Service Health**: Individual service status and performance
+
+### **User Analytics:**
+
+**`userAnalyticsSchema`**
+
+- **Function**: User behavior and engagement analysis
+- **ArchiveNET Use**: Product analytics, user retention, feature adoption
+- **Features**:
+  - **Engagement Metrics**: Active users, session duration, feature usage
+  - **Retention Analysis**: User retention rates and churn analysis
+  - **Segmentation**: Analysis by plan, region, usage level
+  - **Growth Tracking**: New registrations and user acquisition
+
+### **Search Analytics:**
+
+**`searchAnalyticsSchema`**
+
+- **Function**: Search performance and user behavior analysis
+- **ArchiveNET Use**: Search optimization, relevance tuning, user experience improvement
+- **Features**:
+  - **Query Analysis**: Search volume, response times, result quality
+  - **Pattern Recognition**: Common search patterns and popular queries
+  - **Performance Metrics**: Response times, result counts, zero-result rates
+  - **Relevance Tracking**: Result utilization and user satisfaction
+  - **Query Filters**: Length analysis, response time ranges
+
+**`searchAnalyticsResponseSchema`**
+
+- **Function**: Search optimization dashboard data
+- **ArchiveNET Use**: Search performance monitoring, relevance optimization
+- **Features**:
+  - **Search Summary**: Total queries, performance metrics, result quality
+  - **Popular Queries**: Most common searches with performance data
+  - **Usage Patterns**: Query length distribution, time-of-day patterns
+  - **Optimization Insights**: Category preferences and search behavior
+
+### **Cost Analytics:**
+
+**`costAnalyticsSchema`**
+
+- **Function**: Financial tracking and cost optimization
+- **ArchiveNET Use**: Billing calculations, cost optimization, budget planning
+- **Features**:
+  - **Arweave Costs**: Storage insertion costs (searches are free)
+  - **AI Costs**: Embedding generation and processing costs
+  - **Infrastructure Costs**: Compute, storage, bandwidth costs
+  - **Currency Support**: USD and AR token tracking
+  - **Projections**: Future cost estimates based on usage trends
+  - **Comparisons**: Period-over-period cost analysis
+
+**`costAnalyticsResponseSchema`**
+
+- **Function**: Financial dashboard and optimization recommendations
+- **ArchiveNET Use**: Cost monitoring, billing transparency, optimization guidance
+- **Features**:
+  - **Cost Breakdown**: Detailed cost analysis by service type
+  - **Projections**: Monthly cost estimates and trending
+  - **Optimization**: Cost-saving recommendations and efficiency insights
+  - **Arweave Metrics**: Storage costs, transaction counts, free search tracking
+
+### **Real-time Analytics:**
+
+**`realtimeAnalyticsSchema`**
+
+- **Function**: Live system monitoring and alerting
+- **ArchiveNET Use**: Real-time dashboard, incident response, capacity monitoring
+- **Features**:
+  - **Live Metrics**: Concurrent users, active sessions, current load
+  - **Refresh Control**: Configurable update intervals (1-300 seconds)
+  - **Alert Integration**: Real-time threshold monitoring
+  - **System Health**: Live error rates and response times
+
+**`realtimeAnalyticsResponseSchema`**
+
+- **Function**: Live monitoring dashboard data
+- **ArchiveNET Use**: Operations dashboard, incident response, real-time insights
+- **Features**:
+  - **Current State**: Live metric values with timestamps
+  - **Health Status**: Overall system health assessment
+  - **Active Alerts**: Real-time threshold violations and warnings
+
+### **Custom Analytics:**
+
+**`customAnalyticsSchema`**
+
+- **Function**: User-defined analytics and reporting
+- **ArchiveNET Use**: Custom dashboards, specialized reports, automated insights
+- **Features**:
+  - **Flexible Queries**: User-defined metrics, dimensions, and filters
+  - **Visualization Options**: Multiple chart types (line, bar, pie, table, heatmap)
+  - **Automation**: Scheduled reports with email delivery
+  - **Persistence**: Named and saved custom analytics configurations
+
+### **Key Design Principles:**
+
+1. **Arweave-Optimized**: Recognizes that Arweave searches are free, only storage costs money
+2. **Time-Aware**: All schemas support flexible time ranges and timezone handling
+3. **User-Isolated**: Analytics can be filtered by user for multi-tenant scenarios
+4. **Performance-Focused**: Includes execution time tracking and optimization metrics
+5. **Cost-Conscious**: Detailed cost tracking for transparent billing and optimization
+6. **Alert-Enabled**: Built-in threshold monitoring and alerting capabilities
+7. **Extensible**: Custom analytics support for specialized use cases
+
+### **Usage Examples:**
+
+**Memory Growth Analysis**:
+```typescript
+const memoryGrowth = {
+  timeRange: { period: 'month', startDate: '2024-01-01' },
+  aggregation: { groupBy: ['date'], metrics: ['count', 'storage_size'] },
+  filters: { sources: ['mcp'], status: ['active'] }
+}
+```
+
+**Cost Optimization Report**:
+```typescript
+const costAnalysis = {
+  timeRange: { period: 'month' },
+  breakdown: ['arweave_insertion_costs', 'embedding_generation_costs'],
+  includeProjections: true,
+  compareWith: 'previous_period'
+}
+```
+
+**Real-time Monitoring**:
+```typescript
+const liveMetrics = {
+  metrics: ['concurrent_users', 'memory_operations', 'error_rate'],
+  refreshInterval: 30,
+  includeAlerts: true
+}
+```
+
+---
