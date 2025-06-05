@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { apiKeySchema } from './apiKey.js';
+import { subscriptionSchema } from './subscriptions.js';
+
 
 export const userSchema = z.object({
     id: z.string().uuid(),
@@ -9,7 +11,6 @@ export const userSchema = z.object({
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date().optional(),
     apiKeys: z.array(apiKeySchema).optional(), // Optional array of API keys associated with the user
-    subscriptionPlan: z.enum(['basic', 'pro', 'enterprise']).default('basic'), // User plan type
-    isSubscriptionActive: z.boolean().default(true), // Whether the user's subscription is active
+    subscriptionPlans: z.array(subscriptionSchema).optional(), // Optional array of subscriptions associated with the user
 })
 export type User = z.infer<typeof userSchema>;
