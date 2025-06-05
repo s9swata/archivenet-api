@@ -1,3 +1,10 @@
 {
-	"cSpell.words": ["archivenet", "healthcheck"]
+	"cSpell.words": [
+		"archivenet",
+		"Arweave",
+		"Eizen",
+		"healthcheck",
+		"hollowdb",
+		"vectordb"
+	]
 }

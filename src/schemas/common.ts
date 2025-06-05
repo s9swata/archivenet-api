@@ -1,106 +1,46 @@
 import { z } from "zod";
 
-// Common utility schemas
-
-/**  When users browse their memory collections, search results, or usage statistics
-Page-based pagination with configurable limits (1-100 items per page) ---> Dashboard*/
-export const paginationSchema = z.object({
-	page: z.coerce.number().int().min(1).default(1),
-	limit: z.coerce.number().int().min(1).max(100).default(10),
-	offset: z.coerce.number().int().min(0).optional(),
-});
-
-export const sortOrderSchema = z.enum(["asc", "desc"]).default("desc");
-
-export const sortSchema = z.object({
-	sortBy: z.string().optional(),
-	sortOrder: sortOrderSchema,
-});
-
-export const timestampRangeSchema = z.object({
-	startDate: z.coerce.date().optional(),
-	endDate: z.coerce.date().optional(),
-});
-
-export const searchSchema = z.object({
-	query: z.string().min(1).max(1000),
-	filters: z.record(z.any()).optional(),
-});
-
-// Common field validations
+// Basic field validations for ArchiveNET system
 export const uuidSchema = z.string().uuid();
 export const emailSchema = z.string().email();
-export const urlSchema = z.string().url();
-export const arweaveTransactionIdSchema = z.string().length(43);
+export const arweaveTransactionIdSchema = z.string().length(43); // Arweave TX IDs are exactly 43 chars
 
-// Common response schemas
-export const successResponseSchema = z.object({
-	success: z.literal(true),
-	message: z.string(),
-	data: z.any().optional(),
-});
+// Vector schemas - directly match Eizen's API expectations
+export const vectorEmbeddingSchema = z
+	.array(z.number())
+	.min(1)
+	.max(4096) // Support up to 4096 dimensions (common for modern embeddings)
+	.describe(
+		"Vector embedding array - matches Eizen insert(point, metadata) 'point' parameter",
+	);
 
-export const errorResponseSchema = z.object({
-	success: z.literal(false),
-	error: z.string(),
-	code: z.string().optional(),
-	details: z.any().optional(),
-});
+export const vectorMetadataSchema = z
+	.record(z.any())
+	.optional()
+	.describe(
+		"Optional metadata object - matches Eizen insert(point, metadata) 'metadata' parameter",
+	);
 
-export const paginatedResponseSchema = z.object({
-	data: z.array(z.any()),
-	pagination: z.object({
-		total: z.number(),
-		page: z.number(),
-		limit: z.number(),
-		totalPages: z.number(),
-		hasNext: z.boolean(),
-		hasPrev: z.boolean(),
-	}),
-});
+// Vector operations - exactly match Eizen API methods
+export const insertVectorSchema = z
+	.object({
+		vector: vectorEmbeddingSchema,
+		metadata: vectorMetadataSchema,
+	})
+	.describe("Schema for Eizen.insert(vector, metadata) method");
 
-// Health check schema
-export const healthCheckSchema = z.object({
-	status: z.enum(["healthy", "unhealthy"]),
-	timestamp: z.string().datetime(),
-	version: z.string().optional(),
-	services: z
-		.object({
-			database: z.enum(["connected", "disconnected"]),
-			redis: z.enum(["connected", "disconnected"]),
-			arweave: z.enum(["connected", "disconnected"]),
-		})
-		.optional(),
-});
+export const searchVectorSchema = z
+	.object({
+		query: vectorEmbeddingSchema,
+		k: z.number().int().min(1).max(100).default(10),
+	})
+	.describe("Schema for Eizen.knn_search(query, k) method");
 
-// API Key/Token scopes
-export const apiScopesSchema = z.array(
-	z.enum([
-		"memory:read",
-		"memory:write",
-		"memory:delete",
-		"profile:read",
-		"profile:write",
-		"usage:read",
-		"tokens:manage",
-	]),
-);
-
-// Rate limiting schemas
-export const rateLimitSchema = z.object({
-	requests: z.number().int().min(1),
-	windowMs: z.number().int().min(1000),
-});
-
-// Export type definitions for TypeScript
-export type Pagination = z.infer<typeof paginationSchema>;
-export type SortOrder = z.infer<typeof sortOrderSchema>;
-export type Sort = z.infer<typeof sortSchema>;
-export type TimestampRange = z.infer<typeof timestampRangeSchema>;
-export type Search = z.infer<typeof searchSchema>;
-export type SuccessResponse = z.infer<typeof successResponseSchema>;
-export type ErrorResponse = z.infer<typeof errorResponseSchema>;
-export type PaginatedResponse = z.infer<typeof paginatedResponseSchema>;
-export type HealthCheck = z.infer<typeof healthCheckSchema>;
-export type ApiScopes = z.infer<typeof apiScopesSchema>;
-export type RateLimit = z.infer<typeof rateLimitSchema>;
+// Export types
+export type UUID = z.infer<typeof uuidSchema>;
+export type Email = z.infer<typeof emailSchema>;
+export type ArweaveTransactionId = z.infer<typeof arweaveTransactionIdSchema>;
+export type VectorEmbedding = z.infer<typeof vectorEmbeddingSchema>;
+export type VectorMetadata = z.infer<typeof vectorMetadataSchema>;
+export type InsertVector = z.infer<typeof insertVectorSchema>;
+export type SearchVector = z.infer<typeof searchVectorSchema>;
