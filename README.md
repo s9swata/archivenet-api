@@ -114,77 +114,56 @@ pnpm start
 
 ```
 archivenet-api/
-├── 📄 package.json
-├── 📄 drizzle.config.ts
-├── 📄 docker-compose.yml
-├── 📄 .env.example
-├── 📁 docs/
-│   ├── 📄 ArchiveNET.md
-│   ├── 📁 api/
-│   │   └── 📄 schemas.md
-│   └── 📁 eizen/
-├── 📁 src/
-│   ├── 📄 server.ts                 # Express app entry point
-│   ├── 📁 config/
-│   │   ├── 📄 database.ts           # Neon + Drizzle connection
-│   │   ├── 📄 redis.ts              # Redis cache configuration
-│   │   └── 📄 arweave.ts            # Arweave blockchain setup
-│   ├── 📁 database/
-│   │   ├── 📁 schema/               # Drizzle table definitions
-│   │   │   ├── 📄 users.ts          # User accounts & subscriptions
-│   │   │   ├── 📄 contracts.ts      # Arweave contract mappings
-│   │   │   ├── 📄 apiKeys.ts        # API keys with scopes
-│   │   │   ├── 📄 usage.ts          # Usage tracking & billing
-│   │   │   └── 📄 index.ts          # Schema exports
-│   │   ├── 📁 migrations/           # Auto-generated migrations
-│   │   └── 📁 seeds/                # Database seeding
-│   ├── 📁 models/                   # Database query operations
-│   │   ├── 📄 User.ts               # User CRUD with Drizzle
-│   │   ├── 📄 Contract.ts           # Contract management
-│   │   ├── 📄 ApiKey.ts             # API key operations
-│   │   └── 📄 Usage.ts              # Usage tracking queries
-│   ├── 📁 services/                 # Business logic layer
-│   │   ├── 📄 EizenService.ts       # Vector database operations
-│   │   ├── 📄 EmbeddingService.ts   # Text-to-vector conversion
-│   │   ├── 📄 ArweaveService.ts     # Blockchain operations
-│   │   ├── 📄 AuthService.ts        # Authentication logic
-│   │   └── 📄 BillingService.ts     # Usage tracking & billing
-│   ├── 📁 middlewares/              # Express middleware
-│   │   ├── 📄 errorHandler.ts       # Global error handling   ✅
-│   │   ├── 📄 auth.ts               # JWT & API key validation
-│   │   ├── 📄 validation.ts         # Zod schema validation
-│   │   └── 📄 rateLimiting.ts       # Rate limiting per tier
-│   ├── 📁 routes/                   # API endpoint definitions
-│   │   ├── 📄 auth.ts               # Authentication endpoints
-│   │   ├── 📄 users.ts              # User management
-│   │   ├── 📄 vectors.ts            # Vector operations
-│   │   ├── 📄 memories.ts           # Memory management
-│   │   ├── 📄 search.ts             # Search endpoints
-│   │   └── 📄 health.ts             # Health checks
-│   ├── 📁 schemas/                  # Zod validation schemas
-│   │   ├── 📄 common.ts             # Foundation schemas      ✅
-│   │   ├── 📄 vector.ts             # Vector operations       ✅
-│   │   ├── 📄 memory.ts             # Memory management       ✅
-│   │   ├── 📄 auth.ts               # Authentication schemas
-│   │   └── 📄 user.ts               # User management schemas
-│   ├── 📁 utils/                    # Helper functions
-│   │   ├── 📄 responses.ts          # Standardized responses  ✅
-│   │   ├── 📄 logger.ts             # Structured logging
-│   │   └── 📄 crypto.ts             # Encryption utilities
-│   ├── 📁 jobs/                     # Background processing
-│   │   ├── 📄 embeddingProcessor.ts # Process embeddings
-│   │   ├── 📄 usageAggregator.ts    # Usage data aggregation
-│   │   └── 📄 contractMonitor.ts    # Contract health monitoring
-│   └── 📁 types/                    # TypeScript definitions
-│       ├── 📄 express.d.ts          # Express extensions
-│       └── 📄 database.d.ts         # Database types
-├── 📁 tests/                        # Test suite
-│   ├── 📁 unit/                     # Unit tests
-│   ├── 📁 integration/              # Integration tests
-│   └── 📁 e2e/                      # End-to-end tests
-└── 📁 scripts/                      # Development scripts
-    ├── 📄 migrate.ts                # Database migrations
-    └── 📄 seed.ts                   # Database seeding
+└── 📁 src/
+    ├── 📄 server.ts                # Express app entry point
+    │
+│   ├── 📁 database/                # Database layer
+│   │   │   ├── 📄 users.ts         # Users table schema
+│   │   │   ├── 📄 apiKeys.ts       # API keys table schema
+│   │   │   ├── 📄 subscriptions.ts # User subscriptions schema
+│   │   │   └── 📄 index.ts         # Schema exports
+│   │   ├── 📁 migrations/          # Auto-generated migrations
+│   │   │
+│   │   └── 📁 seeds/               # Database seeding
+    │
+    ├── 📁 middlewares/
+    │   ├── 📄 errorHandler.ts      # Global error handling ✅
+    │   ├── 📄 ApiKeyAuth.ts        # API key validation
+    │   └── 📄 validate.ts          # Zod schema validation ✅
+    │
+    ├── 📁 routes/                  # API endpoint definitions (TODO)
+    │   ├── 📄 memories.ts          # Memory storage/retrieval (HIGH PRIORITY)
+    │   ├── 📄 search.ts            # Vector search endpoints (HIGH PRIORITY)
+    │   ├── 📄 health.ts            # Health check endpoints
+    │   ├── 📄 clerkWebhook.ts      # Clerk webhook
+    │   └── 📄 paymentWebhook.ts    # payment-gateway webhook
+    │
+    ├── 📁 schemas/                 # Zod validation schemas
+    │   ├── 📄 common.ts            # Foundation schemas ✅
+    │   ├── 📄 memory.ts            # Memory management ✅
+    │   └── 📄 user.ts              # User schemas for clerk webhook db insert
+    │
+    ├── 📁 services/                # Business logic layer (PRIORITY)
+    │   ├── 📄 EizenService.ts      # Vector database operations (HIGH PRIORITY)
+    │   ├── 📄 EmbeddingService.ts  # Text-to-vector conversion (HIGH PRIORITY)
+    │   ├── 📄 MemoryService.ts     # Memory storage/retrieval (HIGH PRIORITY)
+    │   └── 📄 AuthService.ts       # API Authentication logic (MEDIUM)
+    │
+    ├── 📁 utils/                   # Helper functions
+    │   ├── 📄 responses.ts         # Standardized API responses ✅
+    │   ├── 📄 logger.ts            # Structured logging (Winston)
+    │   └── 📄 crypto.ts            # Encryption utilities (TODO)
+    │
+    ├── 📁 config/                  # Configuration modules (TODO)
+    │   ├── 📄 database.ts          # Database connection setup
+    │   ├── 📄 redis.ts             # Redis cache configuration
+    │   ├── 📄 arweave.ts           # Arweave blockchain setup
+    │   └── 📄 env.ts               # Environment validation
+    │
+    └── 📁 types/                   # TypeScript definitions (TODO)
+        ├── 📄 express.d.ts         # Express request extensions
+        ├── 📄 api.d.ts             # API response types
+        └── 📄 global.d.ts          # Global type definitions
 ```
 
 ## Environment Variables
