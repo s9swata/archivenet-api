@@ -6,8 +6,8 @@ import { auth } from '../middlewares/auth';
 
 export const apiKeyRouter = express.Router();
 
-apiKeyRouter.post('/create', async (req, res) => {
-    const userId = req.body.userId;
+apiKeyRouter.post('/create', auth, async (req, res) => {
+    const userId = req.userId;
     const name = req.body.name || 'Default API Key';
     const description = req.body.description || 'API Key for ArchiveNet';
     const contract_tx_id = req.body.contract_tx_id; // This should be set after Arweave contract creation
