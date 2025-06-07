@@ -7,6 +7,7 @@ import { auth } from "./middlewares/auth.js";
 import { webhook } from "./routes/webhook";
 import { apiKeyRouter } from "./routes/apiKeyRouter";
 import { userRouter } from "./routes/user";
+import { userSubscriptionsRouter } from "./routes/userSubscriptions";
 
 dotenv.config();
 
@@ -51,6 +52,7 @@ app.get("/health", (_req, res) => {
 app.use('/webhook', webhook);
 app.use("/apiKey", apiKeyRouter);
 app.use("/user", userRouter);
+app.use("/user_subscriptions", userSubscriptionsRouter);
 
 app.get("/test", auth, (req, res) => {
 	console.log("User ID:", req.userId);
