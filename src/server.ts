@@ -6,6 +6,7 @@ import { errorHandler } from "./middlewares/errorHandler";
 import { auth } from "./middlewares/auth.js";
 import { webhook } from "./routes/webhook";
 import { apiKeyRouter } from "./routes/apiKeyRouter";
+import { userRouter } from "./routes/user";
 
 dotenv.config();
 
@@ -15,6 +16,7 @@ const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const allowedOrigins = process.env.ORIGIN?.split(",").map((origin) =>
 	origin.trim(),
 ) || ["http://localhost:3000"];
+console.log("Allowed Origins:", allowedOrigins);
 
 // Allows req only from ArchiveNET's official origins & enables credentials
 const corsOptions: cors.CorsOptions = {
@@ -25,6 +27,7 @@ const corsOptions: cors.CorsOptions = {
 		if (!origin || allowedOrigins.includes(origin)) {
 			callback(null, true);
 		} else {
+			console.warn(`CORS blocked request from origin: ${origin}`);
 			callback(new Error("Not allowed by CORS"));
 		}
 	},
@@ -47,6 +50,7 @@ app.get("/health", (_req, res) => {
 
 app.use('/webhook', webhook);
 app.use("/apiKey", apiKeyRouter);
+app.use("/user", userRouter);
 
 app.get("/test", auth, (req, res) => {
 	console.log("User ID:", req.userId);

@@ -1,7 +1,6 @@
-import { integer, pgEnum, pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
+import { integer, pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
 import { userTable } from "./user";
-
-export const subscriptionPlanEnum = pgEnum("subscription_plans", ['basic', 'pro', 'enterprise']);
+import { relations } from "drizzle-orm";
 
 export const userSubscriptionTable = pgTable("user_subscriptions", {
     id: uuid("id").primaryKey().defaultRandom(),
@@ -14,5 +13,9 @@ export const userSubscriptionTable = pgTable("user_subscriptions", {
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
-export type UserSubscription = typeof userSubscriptionTable.$inferSelect;
-export type UserSubscriptionInsert = typeof  userSubscriptionTable.$inferInsert;
+export const userSubscriptionRelations = relations(userSubscriptionTable, ({ one }) => ({
+    user: one(userTable, {
+        fields: [userSubscriptionTable.clerkUserId],
+        references: [userTable.clerkId]
+    })
+}));

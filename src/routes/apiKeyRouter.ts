@@ -1,8 +1,10 @@
 import express from 'express';
-import crypto from 'crypto';
+import { auth } from '../middlewares/auth';
+import { generateApiKey } from '../utils/apiKey';
 import { db } from '../database/db';
 import { apiKeyTable } from '../database/schemas/apiKey';
-import { auth } from '../middlewares/auth';
+import { createApiKey, deleteApiKey, listApiKeys,  } from '../database/models/ApiKey';
+import { eq, and } from 'drizzle-orm';
 
 export const apiKeyRouter = express.Router();
 
@@ -10,27 +12,85 @@ apiKeyRouter.post('/create', auth, async (req, res) => {
     const userId = req.userId;
     const name = req.body.name || 'Default API Key';
     const description = req.body.description || 'API Key for ArchiveNet';
-    const contract_tx_id = req.body.contract_tx_id; // This should be set after Arweave contract creation
-    const keyHash = crypto.randomBytes(32).toString('hex'); // did not implement the jwt method
     
-    const apiKeyEntry = await db.insert(apiKeyTable).values({
-        userId,
-        keyHash,
-        name,
-        description,
-        contract_tx_id, // Placeholder, should be set after Arweave contract creation
-        arweave_wallet_address: '', // Placeholder, should be set after wallet setup
-        isActive: false,
-        lastUsedAt: null, // Initially null, will be updated on first use
-        createdAt: new Date(),
-        updatedAt: new Date(),
-    }).returning();
-    console.log('Request Body:', req.body);
-    console.log('API Key created:', apiKeyEntry);
-    res.status(201).json({
-        message: 'API Key created successfully',
-        apiKey: {
-            keyHash
+    const key = generateApiKey(userId);
+    if (!key) {
+        return res.status(500).json({ error: 'Failed to generate API Key' });
+    }
+    const apiKey = key.apiKey; // Not stored in db
+    const keyHash = key.hashedKey;
+    const keyId = key.keyId;
+    try{
+        const createdApiKey = await createApiKey(userId, keyHash, name, description, keyId);
+        if (!createdApiKey) {
+            return res.status(500).json({ error: 'Failed to create API Key in database' });
         }
-    });
+    
+        return(res.status(201).json({
+            message: 'API Key created successfully',
+            apiKey: {
+                key: apiKey,
+                keyPrefix: key.keyPrefix,
+            }
+        }));
+    } catch (error) {
+        console.error('Error creating API Key:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }  
 })
+
+apiKeyRouter.get('/list', auth, async (req, res) => {
+    const userId = req.userId;
+
+    try {
+        const apiKeys = await listApiKeys(userId);
+        if (apiKeys.length === 0) {
+            return res.status(404).json({ error: 'No API Keys found for this user' });
+        }
+        return res.status(200).json(apiKeys);
+    } catch (error) {
+        console.error('Error fetching API Keys:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+apiKeyRouter.put('/update/:id', auth, async (req, res) => {
+    const userId = req.userId;
+    const apiKeyId = req.params.id;
+    const updates = req.body;
+
+    try {
+        const updatedApiKey = await db.update(apiKeyTable)
+            .set({
+                ...updates,
+                updatedAt: new Date(),
+            })
+            .where(and(eq(apiKeyTable.userId, userId), eq(apiKeyTable.id, apiKeyId)))
+            .returning();
+
+        if (!updatedApiKey) {
+            return res.status(404).json({ error: 'API Key not found or already deleted' });
+        }
+        return res.status(200).json(updatedApiKey);
+    } catch (error) {
+        console.error('Error updating API Key:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+apiKeyRouter.delete('/delete/:id', auth, async (req, res) => {
+    const userId = req.userId;
+    const apiKeyId = req.params.id;
+
+    try {
+        const deletedApiKey = await deleteApiKey(userId, apiKeyId);
+        if (!deletedApiKey) {
+            return res.status(404).json({ error: 'API Key not found or already deleted' });
+        }   
+        return res.status(200).json({ message: 'API Key deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting API Key:', error);
+        return res.status(500).json({ error: 'Internal server error' });
+    }
+});
+

@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import axios from "axios";
 import cypto from "crypto";
 
-describe("userRouter", () => {
+describe("create user by webhook", () => {
   it("should create a user and return 201", async () => {
     const res = await axios.post("http://localhost:8080/webhook/user/registered", 
       {
@@ -24,15 +24,15 @@ describe("userRouter", () => {
   });
 });
 
-describe("userSubscriptionRouter", () => {
+describe("create subscription by webhook", () => {
   it("should update user subscription and return 200", async () => {
     const res = await axios.post("http://localhost:8080/webhook/user/payments/web3", 
       {
-        data: {
+        
             transactionId: cypto.randomUUID(), // Simulating transaction ID
             userId: cypto.randomUUID(), // Simulating Clerk user ID
             subscriptionPlan: "basic" // Example subscription plan
-        }
+        
       }
     );
     expect(res.status).toBe(200);

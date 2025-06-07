@@ -1,8 +1,10 @@
 import { pgTable, uuid, text, timestamp, pgEnum, boolean, integer } from 'drizzle-orm/pg-core';
 import { userTable } from './user';
+import { relations } from 'drizzle-orm';
 
 export const apiKeyTable = pgTable('api_keys', {
     id: uuid('id').primaryKey().defaultRandom(),
+    keyId: text('key_id').notNull().unique(), // Unique identifier for the API key used for lookups
     userId: text('user_id').notNull().unique(),
     keyHash: text('key_hash').notNull().unique(),
     name: text('name').notNull(),
@@ -15,5 +17,6 @@ export const apiKeyTable = pgTable('api_keys', {
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type ApiKey = typeof apiKeyTable.$inferSelect;
-export type ApiKeyInsert = typeof apiKeyTable.$inferInsert;
+export const apiKeyRelations = relations(apiKeyTable, ({ one }) => ({
+    userId: one(userTable, { fields: [apiKeyTable.userId], references: [userTable.clerkId]})
+}));
