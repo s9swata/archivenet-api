@@ -32,7 +32,7 @@ userRouter.post('/info', async (req, res) => {
 
   try {
     const user = await getUserByClerkId(userId);
-    if (user) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -50,7 +50,7 @@ userRouter.put('/update', async (req, res) => {
   try {
     const updatedUser = await updateUser(userId, updates);
 
-    if (updatedUser) {
+    if (!updatedUser) {
       return res.status(404).json({ error: 'User not found' });
     }
 
