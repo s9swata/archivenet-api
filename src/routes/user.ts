@@ -1,5 +1,4 @@
 import express from 'express';
-import { db } from '../database/db';
 import { createUser, deleteUser, getUserByClerkId, updateUser } from '../database/models/User';
 
 export const userRouter = express.Router();
