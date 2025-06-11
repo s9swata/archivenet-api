@@ -44,7 +44,7 @@ export interface ArweaveConfig {
  * @throws {Error} When Redis connection fails and no fallback is available
  */
 export async function initializeArweave(): Promise<ArweaveConfig> {
-	const isProduction = process.env.NODE_ENV === "production";
+	const isProduction = process.env.NODE_ENV?.trim() === "production";
 
 	// Initialize Redis if URL is provided
 	let redis: Redis | undefined;
@@ -84,10 +84,10 @@ export async function initializeArweave(): Promise<ArweaveConfig> {
 	let wallet: JWKInterface;
 
 	if (process.env.SERVICE_WALLET_ADDRESS && process.env.ARWEAVE_WALLET_PATH) {
+		const walletPath = process.env.ARWEAVE_WALLET_PATH;
 		try {
 			// Production: Load wallet from secure file storage
 			const { readFileSync } = await import("node:fs");
-			const walletPath = process.env.ARWEAVE_WALLET_PATH;
 			wallet = JSON.parse(readFileSync(walletPath, "utf-8"));
 			const walletAddress = await warp.arweave.wallets.jwkToAddress(wallet);
 
@@ -95,13 +95,9 @@ export async function initializeArweave(): Promise<ArweaveConfig> {
 			console.log(`Wallet Source: ${walletPath}`);
 			console.log(`Wallet Address: ${walletAddress}`);
 		} catch (error) {
-			console.error("Failed to load production wallet:", error);
-
-			// Development fallback: Generate temporary wallet
-			wallet = await warp.arweave.wallets.generate();
-			const walletAddress = await warp.arweave.wallets.jwkToAddress(wallet);
-			console.log("Using generated temporary wallet for development");
-			console.log(`Wallet Address: ${walletAddress}`);
+			throw new Error(
+				`Cannot load production wallet at ${walletPath}: ${String(error)}`,
+			);
 		}
 	} else {
 		// Development: Generate ephemeral wallet for testing
@@ -113,7 +109,7 @@ export async function initializeArweave(): Promise<ArweaveConfig> {
 		console.log("Generated ephemeral wallet for development");
 		console.log(`Wallet Address: ${walletAddress}`);
 		console.log(
-			"Configure SERVICE_WALLET_ADDRESS and ARWEAVE_WALLET_PATH for production",
+			"Please Configure valid SERVICE_WALLET_ADDRESS and ARWEAVE_WALLET_PATH for production",
 		);
 	}
 
