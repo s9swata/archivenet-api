@@ -1,11 +1,11 @@
 {
-  "kty": "RSA",
-  "n": "example_modulus_base64url_encoded_string_here_this_would_be_much_longer_in_real_wallet",
-  "e": "AQAB",
-  "d": "example_private_exponent_base64url_encoded_string_here_this_would_be_much_longer_in_real_wallet",
-  "p": "example_first_prime_factor_base64url_encoded_string_here",
-  "q": "example_second_prime_factor_base64url_encoded_string_here",
-  "dp": "example_first_factor_crt_exponent_base64url_encoded_string_here",
-  "dq": "example_second_factor_crt_exponent_base64url_encoded_string_here",
-  "qi": "example_first_crt_coefficient_base64url_encoded_string_here"
+	"kty": "RSA",
+	"n": "example_modulus_base64url_encoded_string_here_this_would_be_much_longer_in_real_wallet",
+	"e": "AQAB",
+	"d": "example_private_exponent_base64url_encoded_string_here_this_would_be_much_longer_in_real_wallet",
+	"p": "example_first_prime_factor_base64url_encoded_string_here",
+	"q": "example_second_prime_factor_base64url_encoded_string_here",
+	"dp": "example_first_factor_crt_exponent_base64url_encoded_string_here",
+	"dq": "example_second_factor_crt_exponent_base64url_encoded_string_here",
+	"qi": "example_first_crt_coefficient_base64url_encoded_string_here"
 }
