@@ -16,6 +16,8 @@ build/
 .env.development.local
 .env.test.local
 .env.production.local
+wallet.json
+dev-wallet.json
 
 # IDE files
 #.vscode/
@@ -34,9 +36,10 @@ build/
 ehthumbs.db
 Thumbs.db
 
-# Logs
+# Logs, cache
 logs/
 *.log
+cache/
 
 # Runtime data
 pids/
