@@ -33,13 +33,20 @@
 		"typescript": "^5.8.3"
 	},
 	"dependencies": {
+		"arweave": "^1.15.7",
 		"bcryptjs": "^3.0.2",
 		"cors": "^2.8.5",
 		"dotenv": "^16.5.0",
+		"eizen": "^0.1.0",
 		"express": "^5.1.0",
 		"helmet": "^8.1.0",
+		"hollowdb": "^1.4.3",
 		"http-status-codes": "^2.3.0",
+		"ioredis": "^5.6.1",
 		"uuid": "^11.1.0",
+		"warp-contracts": "^1.4.45",
+		"warp-contracts-plugin-deploy": "^1.0.13",
+		"warp-contracts-redis": "^0.4.2",
 		"zod": "^3.25.49"
 	}
 }
