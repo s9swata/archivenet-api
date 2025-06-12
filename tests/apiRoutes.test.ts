@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import axios, { AxiosError } from 'axios'
+import type { KeyObject } from 'crypto'
 
 const expectErrorResponse = (error: unknown, status: number, message: string) => {
   if (axios.isAxiosError(error) && error.response) {
@@ -73,6 +74,7 @@ describe('API Key Management Routes', () => {
     it('should handle empty list gracefully', async () => {
       const currentKeys = await axios.get(listEndpoint, { headers })
       await Promise.all(
+        //@ts-ignore
         currentKeys.data.map(key => 
           axios.delete(`${baseURL}/delete/${key.id}`, { headers })
         )

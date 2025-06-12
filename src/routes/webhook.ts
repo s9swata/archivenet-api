@@ -5,7 +5,7 @@ import { createUserSubscription } from '../database/models/UserSubscription';
 
 export const webhook = express.Router();
 
-webhook.post('/user/registered', async (req, res) => {
+webhook.post('/clerk/registered', async (req, res) => {
     const userData = req.body.data;
     const email = userData.email_addresses?.[0]?.email_address;
     const username = userData.username || email;
@@ -25,12 +25,16 @@ webhook.post('/user/registered', async (req, res) => {
     res.status(200).json({message: 'User registration received'});
 })
 
-webhook.post('/user/payments/web3', auth, async (req, res) => {
+webhook.post('/payments/web3', auth, async (req, res) => {
     const txnId = req.body.transactionId;
     const userId = req.userId;
     const subscriptionPlan = req.body.subscriptionPlan;
     const quotaLimit = req.body.quotaLimit || 1000; // Default quota limit if not provided
     
+    if (!txnId || !userId || !subscriptionPlan) {
+        res.status(400).json({ error: 'Missing required fields' });
+        return;
+    }
     const subscription = await createUserSubscription({
         clerkUserId: userId,
         plan: subscriptionPlan,

@@ -33,7 +33,7 @@ export async function createApiKey(
 
 export async function updateApiKey(
     userId: string,
-    updates: Partial<Omit<ApiKey, 'id' | 'createdAt' | 'updatedAt'>>
+    updates: Partial<Omit<ApiKey, 'id' | 'createdAt' | 'updatedAt' | 'userId' | 'keyHash' | 'keyId'>>,
 ): Promise<ApiKey | undefined> {
     const [updatedApiKey] = await db.update(apiKeyTable)
         .set({

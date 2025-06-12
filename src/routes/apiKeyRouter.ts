@@ -3,7 +3,7 @@ import { auth } from '../middlewares/auth';
 import { generateApiKey } from '../utils/apiKey';
 import { db } from '../database/db';
 import { apiKeyTable } from '../database/schemas/apiKey';
-import { createApiKey, deleteApiKey, listApiKeys,  } from '../database/models/ApiKey';
+import { createApiKey, listApiKeys,  } from '../database/models/ApiKey';
 import { eq, and } from 'drizzle-orm';
 
 export const apiKeyRouter = express.Router();
@@ -13,9 +13,13 @@ apiKeyRouter.post('/create', auth, async (req, res) => {
     const name = req.body.name || 'Default API Key';
     const description = req.body.description || 'API Key for ArchiveNet';
     
+    if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+    }
     const key = generateApiKey(userId);
     if (!key) {
-        return res.status(500).json({ error: 'Failed to generate API Key' });
+        res.status(500).json({ error: 'Failed to generate API Key' });
     }
     const apiKey = key.apiKey; // Not stored in db
     const keyHash = key.hashedKey;
@@ -23,19 +27,19 @@ apiKeyRouter.post('/create', auth, async (req, res) => {
     try{
         const createdApiKey = await createApiKey(userId, keyHash, name, description, keyId);
         if (!createdApiKey) {
-            return res.status(500).json({ error: 'Failed to create API Key in database' });
+            res.status(500).json({ error: 'Failed to create API Key in database' });
         }
     
-        return(res.status(201).json({
+        res.status(201).json({
             message: 'API Key created successfully',
             apiKey: {
                 key: apiKey,
                 keyPrefix: key.keyPrefix,
             }
-        }));
+        });
     } catch (error) {
         console.error('Error creating API Key:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }  
 })
 
@@ -43,14 +47,18 @@ apiKeyRouter.get('/list', auth, async (req, res) => {
     const userId = req.userId;
 
     try {
+        if(!userId) {
+            res.status(401).json({ error: 'Unauthorized' }); 
+            return;
+        }
         const apiKeys = await listApiKeys(userId);
         if (apiKeys.length === 0) {
-            return res.status(404).json({ error: 'No API Keys found for this user' });
+            res.status(404).json({ error: 'No API Keys found for this user' });
         }
-        return res.status(200).json(apiKeys);
+        res.status(200).json(apiKeys);
     } catch (error) {
         console.error('Error fetching API Keys:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 
@@ -60,6 +68,10 @@ apiKeyRouter.put('/update/:id', auth, async (req, res) => {
     const updates = req.body;
 
     try {
+        if (!userId || !apiKeyId) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
         const updatedApiKey = await db.update(apiKeyTable)
             .set({
                 ...updates,
@@ -69,12 +81,12 @@ apiKeyRouter.put('/update/:id', auth, async (req, res) => {
             .returning();
 
         if (!updatedApiKey) {
-            return res.status(404).json({ error: 'API Key not found or already deleted' });
+            res.status(404).json({ error: 'API Key not found or already deleted' });
         }
-        return res.status(200).json(updatedApiKey);
+        res.status(200).json(updatedApiKey);
     } catch (error) {
         console.error('Error updating API Key:', error);
-        return res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error' });
     }
 });
 

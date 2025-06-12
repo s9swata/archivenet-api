@@ -6,10 +6,18 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
     const token = authHeader?.split(" ")[1];
 
     try{
-        const decoded = jwt.decode(token, process.env.CLERK_JWT_KEY, {
+        if (!token || process.env.CLERK_JWT_KEY === undefined) {
+            res.status(401).json({
+                message: "erorr while decoding jwt, token is missing or clerk jwt key is not set"
+            });
+            return;
+        }
+        const decoded = jwt.verify(token, process.env.CLERK_JWT_KEY, {
             algorithms: ['RS256']
         })
+        // @ts-ignore
         if (decoded?.sub){
+            // @ts-ignore
             req.userId = decoded?.sub;
             next()
         }

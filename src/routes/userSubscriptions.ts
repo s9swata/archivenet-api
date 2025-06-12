@@ -9,6 +9,10 @@ userSubscriptionsRouter.post('/create', async (req, res) => {
     const subscriptionPlan = req.body.subscriptionPlan;
     const quotaLimit = req.body.quotaLimit || 1000; // Default quota limit if not provided
     try{
+        if (!txnId || !userId || !subscriptionPlan) {
+            res.status(400).json({ error: 'Missing required fields' });
+            return;
+        }
         const subscription = await createUserSubscription({
             clerkUserId: userId,
             plan: subscriptionPlan,
@@ -28,7 +32,8 @@ userSubscriptionsRouter.get('/list/:userId', async (req, res) => {
     const subscription = await getUserSubscription(userId);
     try{
     if (!subscription) {
-        return res.status(404).json({ error: 'No subscription found for this user' });
+        res.status(404).json({ error: 'No subscription found for this user' });
+        return;
     }
     console.log('User subscription details:', subscription);
     res.status(200).json({ message: 'List of user subscriptions' });
@@ -45,7 +50,8 @@ userSubscriptionsRouter.put('/update/:userId', async (req, res) => {
     try {
         const updatedSubscription = await updateUserSubscription(userId, updates);
         if (updatedSubscription.length === 0) {
-            return res.status(404).json({ error: 'No subscription found for this user' });
+            res.status(404).json({ error: 'No subscription found for this user' });
+            return;
         }
         console.log('User subscription updated:', updatedSubscription);
         res.status(200).json(updatedSubscription);

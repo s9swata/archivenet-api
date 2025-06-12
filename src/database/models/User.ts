@@ -19,7 +19,7 @@ export async function getUserByClerkId(clerkId: string): Promise<User | undefine
 
 export async function createUser(
     userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>
-): Promise<User> {
+): Promise<User | undefined> {
     const [newUser] = await db.insert(userTable).values({
         ...userData,
         createdAt: new Date(),
