@@ -51,6 +51,12 @@ export async function initializeArweave(): Promise<ArweaveConfig> {
 	if (process.env.REDIS_URL) {
 		try {
 			redis = new Redis(process.env.REDIS_URL);
+			redis.on("error", (err) => {
+				console.warn("Redis connection lost, disabling cache:", err);
+				redis?.disconnect();
+				redis = undefined;
+			});
+			await redis.ping(); // simple readiness check
 			console.log("Redis connected for Arweave caching");
 		} catch (error) {
 			console.warn("Redis connection failed, proceeding without cache:", error);
