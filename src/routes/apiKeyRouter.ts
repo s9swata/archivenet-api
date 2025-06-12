@@ -78,19 +78,3 @@ apiKeyRouter.put('/update/:id', auth, async (req, res) => {
     }
 });
 
-apiKeyRouter.delete('/delete/:id', auth, async (req, res) => {
-    const userId = req.userId;
-    const apiKeyId = req.params.id;
-
-    try {
-        const deletedApiKey = await deleteApiKey(userId, apiKeyId);
-        if (!deletedApiKey) {
-            return res.status(404).json({ error: 'API Key not found or already deleted' });
-        }   
-        return res.status(200).json({ message: 'API Key deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting API Key:', error);
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
