@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import { findHashedKeyInDb } from '../database/models/ApiKey';
+import { findHashedKeyInDb } from '../database/models/ApiKey.js';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_ISSUER = 'archivenet-api';

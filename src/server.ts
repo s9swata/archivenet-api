@@ -2,12 +2,12 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import helmet from "helmet";
-import { errorHandler } from "./middlewares/errorHandler";
+import { errorHandler } from "./middlewares/errorHandler.js";
 import { auth } from "./middlewares/auth.js";
-import { webhook } from "./routes/webhook";
-import { apiKeyRouter } from "./routes/apiKeyRouter";
-import { userRouter } from "./routes/user";
-import { userSubscriptionsRouter } from "./routes/userSubscriptions";
+import { webhook } from "./routes/webhook.js";
+import { apiKeyRouter } from "./routes/apiKeyRouter.js";
+import { userRouter } from "./routes/user.js";
+import { userSubscriptionsRouter } from "./routes/userSubscriptions.js";
 
 dotenv.config();
 

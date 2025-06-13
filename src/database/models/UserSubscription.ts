@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { userSubscriptionTable } from '../schemas/subscriptions';
+import { db } from '../db.js';
+import { userSubscriptionTable } from '../schemas/subscriptions.js';
 import { eq } from 'drizzle-orm';
 import type { InferSelectModel, InferInsertModel } from 'drizzle-orm';
 

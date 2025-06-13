@@ -1,9 +1,9 @@
 import express from 'express';
-import { auth } from '../middlewares/auth';
-import { generateApiKey } from '../utils/apiKey';
-import { db } from '../database/db';
-import { apiKeyTable } from '../database/schemas/apiKey';
-import { createApiKey, listApiKeys,  } from '../database/models/ApiKey';
+import { auth } from '../middlewares/auth.js';
+import { generateApiKey } from '../utils/apiKey.js';
+import { db } from '../database/db.js';
+import { apiKeyTable } from '../database/schemas/apiKey.js';
+import { createApiKey, listApiKeys,  } from '../database/models/ApiKey.js';
 import { eq, and } from 'drizzle-orm';
 
 export const apiKeyRouter = express.Router();

@@ -1,7 +1,7 @@
 import express from 'express';
-import { auth } from '../middlewares/auth';
-import { createUser } from '../database/models/User';
-import { createUserSubscription } from '../database/models/UserSubscription';
+import { auth } from '../middlewares/auth.js';
+import { createUser } from '../database/models/User.js';
+import { createUserSubscription } from '../database/models/UserSubscription.js';
 
 export const webhook = express.Router();
 

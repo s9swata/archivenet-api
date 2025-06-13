@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import jwt, { type JwtPayload } from "jsonwebtoken";
 
 export const auth = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers["authorization"];
@@ -14,10 +14,8 @@ export const auth = (req: Request, res: Response, next: NextFunction) => {
         }
         const decoded = jwt.verify(token, process.env.CLERK_JWT_KEY, {
             algorithms: ['RS256']
-        })
-        // @ts-ignore
+        }) as JwtPayload;
         if (decoded?.sub){
-            // @ts-ignore
             req.userId = decoded?.sub;
             next()
         }

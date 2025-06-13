@@ -1,5 +1,5 @@
 import { pgTable, uuid, text, timestamp, pgEnum, boolean, integer } from 'drizzle-orm/pg-core';
-import { userTable } from './user';
+import { userTable } from './user.js';
 import { relations } from 'drizzle-orm';
 
 export const apiKeyTable = pgTable('api_keys', {

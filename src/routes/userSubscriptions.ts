@@ -1,5 +1,5 @@
 import express from 'express';
-import { createUserSubscription, getUserSubscription, updateUserSubscription, deleteUserSubscription } from '../database/models/UserSubscription';
+import { createUserSubscription, getUserSubscription, updateUserSubscription, deleteUserSubscription } from '../database/models/UserSubscription.js';
 
 export const userSubscriptionsRouter = express.Router();
 

@@ -1,5 +1,5 @@
 import { integer, pgTable, uuid, text, timestamp, boolean } from "drizzle-orm/pg-core";
-import { userTable } from "./user";
+import { userTable } from "./user.js";
 import { relations } from "drizzle-orm";
 
 export const userSubscriptionTable = pgTable("user_subscriptions", {

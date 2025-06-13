@@ -1,5 +1,5 @@
-import { db } from '../db';
-import { apiKeyTable } from '../schemas/apiKey';
+import { db } from '../db.js';
+import { apiKeyTable } from '../schemas/apiKey.js';
 import { eq, and } from 'drizzle-orm';
 import type { InferSelectModel } from 'drizzle-orm';
 
