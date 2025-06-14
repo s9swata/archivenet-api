@@ -35,8 +35,8 @@ Authorization: Bearer ak_1234567890abcdef (API key)
 Content-Type: application/json
 
 {
-  "query": "favourite color preference",
-  "limit": 5,
+  "query": "favorite color preference",
+  "k"(limit): 5,
   "filters": {
     "tags": ["preference", "color"],
     "importance_min": 5

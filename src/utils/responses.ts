@@ -1,14 +1,54 @@
-import type { Response } from "express";
+/**
+ * Standard API response utilities for ArchiveNET
+ */
 
-export function successResponse(
-	res: Response,
-	data: unknown,
-	message = "success",
-) {
-	return res.status(200).json({ success: true, message, data });
+export interface ApiResponse<T = unknown> {
+	success: boolean;
+	message: string;
+	data?: T;
+	error?: string;
+	timestamp: string;
 }
 
-export function errorResponse(res: Response, status: number, error: unknown) {
-	const errorMessage = error instanceof Error ? error.message : String(error);
-	return res.status(status).json({ success: false, error: errorMessage });
+/**
+ * Create a successful API response
+ */
+export function successResponse<T>(
+	data: T,
+	message = "Success",
+): ApiResponse<T> {
+	return {
+		success: true,
+		message,
+		data,
+		timestamp: new Date().toISOString(),
+	};
+}
+
+/**
+ * Create an error API response
+ */
+export function errorResponse(message: string, error?: string): ApiResponse {
+	return {
+		success: false,
+		message,
+		error,
+		timestamp: new Date().toISOString(),
+	};
+}
+
+/**
+ * Create a validation error API response with detailed field errors
+ */
+export function validationErrorResponse(
+	errors: Array<{ path: (string | number)[]; message: string; code: string }>,
+	message = "Validation failed",
+): ApiResponse & { errors: typeof errors } {
+	return {
+		success: false,
+		message,
+		error: "Invalid request data",
+		errors,
+		timestamp: new Date().toISOString(),
+	};
 }
