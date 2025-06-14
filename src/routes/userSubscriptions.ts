@@ -1,5 +1,6 @@
 import express from 'express';
 import { createUserSubscription, getUserSubscription, updateUserSubscription, deleteUserSubscription } from '../database/models/UserSubscription.js';
+import { auth } from '../middlewares/auth.js';
 
 export const userSubscriptionsRouter = express.Router();
 
@@ -27,8 +28,12 @@ userSubscriptionsRouter.post('/create', async (req, res) => {
     }        
 })
 
-userSubscriptionsRouter.get('/list/:userId', async (req, res) => {
-    const userId = req.params.userId;
+userSubscriptionsRouter.get('/list', auth, async (req, res) => {
+    const userId = req.userId;
+    if (!userId) {
+        res.status(400).json({ error: 'User ID is required' });
+        return;
+    }
     const subscription = await getUserSubscription(userId);
     try{
     if (!subscription) {

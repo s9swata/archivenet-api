@@ -25,7 +25,7 @@ webhook.post('/clerk/registered', async (req, res) => {
     res.status(200).json({message: 'User registration received'});
 })
 
-webhook.post('/payments/web3', auth, async (req, res) => {
+webhook.post('/payments/web3', async (req, res) => {
     const txnId = req.body.transactionId;
     const userId = req.userId;
     const subscriptionPlan = req.body.subscriptionPlan;
