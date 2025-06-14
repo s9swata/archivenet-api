@@ -21,29 +21,35 @@ export interface EizenInsertResult {
 }
 
 /**
- * Service class for managing Eizen vector database operations
+ * Service class for managing Eizen vector database operations with multi-tenant support
  *
  * This service provides a high-level interface for:
  * - Vector storage and retrieval
  * - Similarity search using HNSW (Hierarchical Navigable Small World) algorithm
  * - Database statistics and management
+ * - Multi-tenant contract management
  *
  * The service uses Arweave for decentralized storage and HollowDB as the underlying data layer.
- * Vectors are stored with configurable HNSW parameters for optimal search performance.
+ * Each user gets their own contract instance for isolated vector storage.
  *
- * @see https://github.com/Itz-Agasta/Eizendb/blob/main/docs/DEVELOPER_GUIDE.md Official Eizen docs
- * 
+ * @see https://github.com/Itz-Agasta/Eizendb/blob/main/docs/DEVELOPER_GUIDE.md --> Official Eizen Docs
+ *
  * @example
  * ```typescript
+ * // Create a user-specific instance
+ * const userEizenService = await EizenService.forContract(userContractId);
+ *
  * // Insert a vector
- * const result = await eizenService.insertVector({
+ * const result = await userEizenService.insertVector({
  *   vector: [0.1, 0.2, 0.3, ...],
- *   metadata: { Id: "a_we123...", "content": "User's favorite color is blue",
-    "context": "preference setting" }
+ *   metadata: {
+ *     "content": "User's favorite color is blue",
+ *     "context": "preference setting"
+ *   }
  * });
  *
  * // Search for similar vectors
- * const similar = await eizenService.searchVectors({
+ * const similar = await userEizenService.searchVectors({
  *   query: [0.1, 0.2, 0.3, ...],
  *   k: 5
  * });
@@ -52,26 +58,129 @@ export interface EizenInsertResult {
 export class EizenService {
 	private vectorDb: EizenDbVector<VectorMetadata> | null = null; // The Eizen vector database instance with generic metadata type
 	private sdk: SetSDK<string> | null = null; // HollowDB SDK instance for Arweave interactions
-	private arweaveConfig: ArweaveConfig | null = null; //  Arweave configuration containing wallet, warp, and redis instances
+	private contractId: string; // The contract ID for this specific instance
 	private isInitialized = false;
 
+	// Shared Arweave configuration across all instances
+	private static sharedArweaveConfig: ArweaveConfig | null = null;
+	private static arweaveInitPromise: Promise<ArweaveConfig> | null = null;
+
 	/**
-	 * Creates a new EizenService instance and begins asynchronous initialization
+	 * Creates a new EizenService instance for a specific contract
 	 *
-	 * Note: The constructor starts initialization but doesn't wait for completion.
-	 * All public methods will automatically wait for initialization via ensureInitialized().
+	 * Note: Use the static factory methods instead of calling constructor directly.
+	 *
+	 * @param contractId - The Arweave contract ID for this user's vector database
 	 */
-	constructor() {
-		this.initialize().catch((error) => {
-			console.error("Failed to initialize EizenService:", error);
-		});
+	private constructor(contractId: string) {
+		this.contractId = contractId;
 	}
 
 	/**
-	 * Initialize Arweave configuration and Eizen vector database
+	 * Create a new EizenService instance for a specific user contract
+	 *
+	 * This factory method creates and initializes a service instance for a specific
+	 * contract ID. Each user should have their own contract for data isolation.
+	 *
+	 * @param contractId - The Arweave contract ID for the user's vector database
+	 * @returns Promise resolving to an initialized EizenService instance
+	 *
+	 * @example
+	 * ```typescript
+	 * // Create service for a user's contract
+	 * const userService = await EizenService.forContract("user123_contract_id");
+	 *
+	 * // Insert vectors using user's isolated database
+	 * await userService.insertVector({
+	 *   vector: [0.1, 0.2, 0.3],
+	 *   metadata: { content: "user data" }
+	 * });
+	 * ```
+	 */
+	static async forContract(contractId: string): Promise<EizenService> {
+		const service = new EizenService(contractId);
+		await service.initialize();
+		return service;
+	}
+
+	/**
+	 * Deploy a new contract and return the contractID from Arweave
+	 *
+	 * This method creates a new Arweave contract for a user and returns
+	 * the contract ID for storage in Arweave.
+	 *
+	 * @returns Promise resolving to the new contract ID
+	 * @use const { contractId } = await EizenService.deployNewContract();
+	 */
+	static async deployNewContract(): Promise<{
+		contractId: string;
+	}> {
+		// Initialize shared Arweave config
+		const arweaveConfig = await EizenService.getSharedArweaveConfig();
+
+		try {
+			console.log("Deploying new Eizen contract...");
+
+			// Deploy new contract to Arweave
+			const { contractTxId } = await EizenDbVector.deploy(
+				arweaveConfig.wallet,
+				arweaveConfig.warp,
+			);
+
+			console.log(`Eizen contract deployed successfully: ${contractTxId}`);
+
+			return { contractId: contractTxId };
+		} catch (error) {
+			console.error("Failed to deploy contract:", error);
+			throw new Error(
+				`Failed to deploy contract: ${error instanceof Error ? error.message : "Unknown error"}`,
+			);
+		}
+	}
+
+	/**
+	 * Get or initialize the shared Arweave configuration
+	 *
+	 * This method ensures that Arweave configuration is initialized only once
+	 * and shared across all service instances for efficiency.
+	 *
+	 * @private
+	 */
+	private static async getSharedArweaveConfig(): Promise<ArweaveConfig> {
+		if (EizenService.sharedArweaveConfig) {
+			return EizenService.sharedArweaveConfig;
+		}
+
+		// Ensure only one initialization happens at a time
+		if (!EizenService.arweaveInitPromise) {
+			EizenService.arweaveInitPromise = initializeArweave();
+		}
+
+		EizenService.sharedArweaveConfig = await EizenService.arweaveInitPromise;
+		return EizenService.sharedArweaveConfig;
+	}
+
+	/**
+	 * Get HNSW parameters from environment variables with defaults
+	 *
+	 * This method centralizes HNSW parameter configuration to avoid duplication
+	 * between startup logging and instance initialization.
+	 *
+	 * @private
+	 * @returns HNSW configuration object
+	 */
+	private static getHnswParams() {
+		return {
+			m: Number(process.env.EIZEN_M) || 16, // Maximum number of bi-directional links for each element
+			efConstruction: Number(process.env.EIZEN_EF_CONSTRUCTION) || 200, // Dynamic candidate list size during index construction (higher == better quality == slower build)
+			efSearch: Number(process.env.EIZEN_EF_SEARCH) || 50, // Dynamic candidate list size during search (higher == better accuracy == slower search)
+		};
+	}
+	/**
+	 * Initialize the service instance for a specific contract
 	 *
 	 * This method:
-	 * 1. Sets up Arweave wallet and warp instance
+	 * 1. Gets the shared Arweave configuration
 	 * 2. Creates HollowDB SDK with the contract ID
 	 * 3. Initializes EizenDbVector with HNSW parameters
 	 *
@@ -81,45 +190,40 @@ export class EizenService {
 	 * - efSearch: Size of dynamic candidate list during search (default: 50)
 	 *
 	 * @private
-	 * @throws {Error} When EIZEN_CONTRACT_ID is missing or initialization fails
+	 * @throws {Error} When initialization fails
 	 */
 	private async initialize(): Promise<void> {
 		try {
-			console.log("Initializing EizenService...");
+			console.log(`Initializing EizenService for contract: ${this.contractId}`);
 
-			// Step 1: Initialize Arweave configuration (wallet, warp, redis)
-			this.arweaveConfig = await initializeArweave();
+			// Step 1: Get shared Arweave configuration
+			const arweaveConfig = await EizenService.getSharedArweaveConfig();
 
-			// Step 2: Validate required environment variables
-			const contractTxId = process.env.EIZEN_CONTRACT_ID; //FIXME: idk have to look at it
-			if (!contractTxId) {
-				throw new Error("EIZEN_CONTRACT_ID environment variable is required");
-			}
-
-			// Step 3: Create HollowDB SDK instance for Arweave smart contract interactions
+			// Step 2: Create HollowDB SDK instance for this specific contract
 			this.sdk = new SetSDK<string>(
-				this.arweaveConfig.wallet,
-				contractTxId,
-				this.arweaveConfig.warp,
+				arweaveConfig.wallet,
+				this.contractId,
+				arweaveConfig.warp,
 			);
 
-			// Step 4: Configure HNSW algorithm parameters from environment or use defaults
-			const options = {
-				m: Number(process.env.EIZEN_M) || 16, // Maximum number of bi-directional links for each element
-				efConstruction: Number(process.env.EIZEN_EF_CONSTRUCTION) || 200, // Dynamic candidate list size during index construction (higher == better quality == slower build)
-				efSearch: Number(process.env.EIZEN_EF_SEARCH) || 50, // Dynamic candidate list size during search (higher == better accuracy == slower search)
-			};
+			// Step 3: Configure HNSW algorithm parameters from environment or use defaults
+			const options = EizenService.getHnswParams();
 
-			// Step 5: Create the Eizen vector database instance with configured parameters
+			// Step 4: Create the Eizen vector database instance with configured parameters
 			this.vectorDb = new EizenDbVector<VectorMetadata>(this.sdk, options);
 
 			this.isInitialized = true;
-			console.log("EizenService initialized successfully");
+			console.log(
+				`EizenService initialized successfully for contract: ${this.contractId}`,
+			);
 			console.log(
 				`HNSW Parameters: m=${options.m}, efConstruction=${options.efConstruction}, efSearch=${options.efSearch}`,
 			);
 		} catch (error) {
-			console.error("EizenService initialization failed:", error);
+			console.error(
+				`EizenService initialization failed for contract ${this.contractId}:`,
+				error,
+			);
 			throw error;
 		}
 	}
@@ -128,7 +232,8 @@ export class EizenService {
 	 * Ensures the service is fully initialized before performing operations
 	 *
 	 * This method is called by all public methods to guarantee that the service
-	 * is ready for use. It will wait for initialization if it's still in progress.
+	 * is ready for use. Since instances are created via factory methods,
+	 * this should typically not be needed, but provides a safety check.
 	 *
 	 * @private
 	 * @throws {Error} When the service fails to initialize properly
@@ -152,7 +257,7 @@ export class EizenService {
 	 * @param data - The vector data and metadata to insert
 	 * @param data.vector - The numerical vector representation (e.g., embeddings)
 	 * @param data.metadata - Associated metadata (document ID, type, etc.)
-	 * @returns Promise resolving to insertion result with assigned vector ID //TODO: setup the vectorID tracking
+	 * @returns Promise resolving to insertion result with assigned vector ID
 	 *
 	 * @example
 	 * ```typescript
@@ -272,7 +377,7 @@ export class EizenService {
 	}
 
 	/**
-	 * Retrieve a specific vector by its unique ID
+	 * Retrieve a specific vector by its unique ID (Experimental)
 	 *
 	 * This method allows direct access to a vector and its metadata using
 	 * the ID returned from previous insert or search operations.
@@ -327,50 +432,11 @@ export class EizenService {
 		}
 	}
 
-	/**
-	 * Deploy a new Eizen smart contract to Arweave
-	 *
-	 * This method is primarily used for initial setup or creating new isolated
-	 * vector databases. The returned contract ID should be set as EIZEN_CONTRACT_ID
-	 * in your environment variables.
-	 *
-	 * @returns Promise resolving to the deployed `contract transaction ID`
-	 *
-	 * @example
-	 * ```typescript
-	 * // Deploy a new contract (typically done once during setup for each user)
-	 * const contractId = await eizenService.deployContract();
-	 * console.log(`New contract deployed: ${contractId}`);
-	 * // Set this as EIZEN_CONTRACT_ID in your environment
-	 * ```
-	 *
-	 * @throws {Error} When Arweave config is unavailable or deployment fails
-	 */
-	async deployContract(): Promise<string> {
-		await this.ensureInitialized();
-
-		if (!this.arweaveConfig) {
-			throw new Error("Arweave configuration not available");
-		}
-
-		try {
-			console.log("Deploying new Eizen contract...");
-
-			// Deploy new contract to Arweave using the configured wallet and warp instance
-			const { contractTxId } = await EizenDbVector.deploy(
-				this.arweaveConfig.wallet,
-				this.arweaveConfig.warp,
-			);
-
-			console.log(`Eizen contract deployed successfully: ${contractTxId}`);
-			return contractTxId;
-		} catch (error) {
-			console.error("Failed to deploy contract:", error);
-			throw new Error(
-				`Failed to deploy contract: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
-		}
-	}
+	// ============================================================================
+	// Support Functions
+	// These functions are not part of the core Eizen logic,
+	// but can be called externally (e.g., for logging, diagnostics, etc.).
+	// ============================================================================
 
 	/**
 	 * Get database statistics and service status
@@ -378,20 +444,26 @@ export class EizenService {
 	 * Provides information about the current state of the vector database,
 	 * including the total number of stored vectors and initialization status.
 	 *
-	 * @returns Promise resolving to database statistics (0 for now)
+	 * @returns Promise resolving to database statistics
 	 *
-	 * @todo Implement it via service NEON db
+	 * @todo Implement vector count tracking via service NEON db
 	 */
-	async getStats(): Promise<{ totalVectors: number; isInitialized: boolean }> {
+	async getStats(): Promise<{
+		totalVectors: number;
+		isInitialized: boolean;
+		contractId: string;
+	}> {
 		try {
 			return {
 				totalVectors: this.vectorDb ? await this.getVectorCount() : 0,
 				isInitialized: this.isInitialized,
+				contractId: this.contractId,
 			};
 		} catch (error) {
 			return {
 				totalVectors: 0,
 				isInitialized: this.isInitialized,
+				contractId: this.contractId,
 			};
 		}
 	}
@@ -415,26 +487,85 @@ export class EizenService {
 	 * This method should be called when shutting down the application
 	 * to properly close database connections and free resources.
 	 *
+	 * Note: This only cleans up this specific instance. The shared Arweave
+	 * configuration remains for other instances.
+	 *
 	 * @example
 	 * ```typescript
-	 * // During application shutdown
-	 * await eizenService.cleanup();
+	 * // During application shutdown or when done with this user's service
+	 * await userEizenService.cleanup();
 	 * ```
 	 */
 	async cleanup(): Promise<void> {
 		try {
+			// Reset initialization state for this instance
+			this.isInitialized = false;
+			this.vectorDb = null;
+			this.sdk = null;
+
+			console.log(
+				`EizenService cleanup completed for contract: ${this.contractId}`,
+			);
+		} catch (error) {
+			console.error(
+				`Error during cleanup for contract ${this.contractId}:`,
+				error,
+			);
+		}
+	}
+
+	/**
+	 * Clean up shared resources (call this only during application shutdown)
+	 *
+	 * This static method cleans up shared Arweave configuration and should
+	 * only be called when the entire application is shutting down.
+	 *
+	 * @example
+	 * ```typescript
+	 * // During complete application shutdown
+	 * await EizenService.globalCleanup();
+	 * ```
+	 */
+	static async globalCleanup(): Promise<void> {
+		try {
 			// Close Redis connection if it exists
-			if (this.arweaveConfig?.redis) {
-				await this.arweaveConfig.redis.quit();
+			if (EizenService.sharedArweaveConfig?.redis) {
+				await EizenService.sharedArweaveConfig.redis.quit();
 				console.log("Redis connection closed");
 			}
-			// Reset initialization state
-			this.isInitialized = false;
+
+			// Reset shared state
+			EizenService.sharedArweaveConfig = null;
+			EizenService.arweaveInitPromise = null;
+
+			console.log("EizenService global cleanup completed");
 		} catch (error) {
-			console.error("Error during cleanup:", error);
+			console.error("Error during global cleanup:", error);
 		}
+	}
+
+	// Get the contract ID associated with this service instance
+	getContractId(): string {
+		return this.contractId;
+	}
+
+	/**
+	 * Initialize shared system configuration at startup
+	 *
+	 * Used for displaying system monitor logs at API startup.
+	 * @public
+	 * @returns Promise that resolves when shared configuration is initialized
+	 */
+	static async initEizenConfig(): Promise<void> {
+		await EizenService.getSharedArweaveConfig();
+		const hnswParams = EizenService.getHnswParams();
+
+		console.log("Shared Arweave configuration initialized");
+		console.log(
+			`HNSW Parameters: m=${hnswParams.m}, efConstruction=${hnswParams.efConstruction}, efSearch=${hnswParams.efSearch}`,
+		);
 	}
 }
 
-//Singleton instance of EizenService
-export const eizenService = new EizenService();
+// To create instances: await EizenService.forContract(contractId)
+// To deploy new contract: await EizenService.deployNewContract()
