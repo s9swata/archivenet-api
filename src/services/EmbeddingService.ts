@@ -30,24 +30,12 @@ export interface EmbeddingResult {
 export class EmbeddingService {
 	private extractor: EmbeddingPipeline | null = null;
 	private isInitialized = false;
+	private initializationPromise: Promise<void> | null = null;
 	/**
 	 * all-MiniLM-L6-v2 is a lightweight, fast model that produces `384-dimensional` embeddings.
 	 *  @see https://huggingface.co/Xenova/all-MiniLM-L6-v2
 	 */
 	private readonly modelName = "Xenova/all-MiniLM-L6-v2";
-
-	/**
-	 * Creates a new EmbeddingService instance and begins asynchronous initialization.
-	 *
-	 * The initialization happens in the background to avoid blocking the constructor.
-	 * If initialization fails, it will be retried when the service is first used.
-	 */
-	constructor() {
-		this.initialize().catch((error) => {
-			console.error("Failed to initialize EmbeddingService:", error);
-			// Note: We don't throw here to allow for retry on first use
-		});
-	}
 
 	/**
 	 * Loads the transformer model and prepares the feature-extraction pipeline.
@@ -83,10 +71,29 @@ export class EmbeddingService {
 
 	/**
 	 * Ensure the service is initialized before operations
+	 * Public method to allow controlled initialization during server startup
+	 * Prevents multiple concurrent initialization attempts
 	 */
-	private async ensureInitialized(): Promise<void> {
-		if (!this.isInitialized) {
-			await this.initialize();
+	async ensureInitialized(): Promise<void> {
+		// If already initialized, return immediately
+		if (this.isInitialized && this.extractor) {
+			return;
+		}
+
+		// If initialization is already in progress, wait for it
+		if (this.initializationPromise) {
+			await this.initializationPromise;
+			return;
+		}
+
+		// Start new initialization
+		this.initializationPromise = this.initialize();
+
+		try {
+			await this.initializationPromise;
+		} finally {
+			// Clear the promise once initialization is complete
+			this.initializationPromise = null;
 		}
 
 		if (!this.extractor) {
@@ -237,16 +244,5 @@ export class EmbeddingService {
  * - Only one model is loaded in memory at a time
  * - Initialization overhead is minimized
  * - Consistent behavior across the application
- *
- * Import and use this instance throughout the api instead of
- * creating new EmbeddingService instances.
- *
- * @example
- * ```typescript
- * import { embeddingService } from './services/EmbeddingService';
- *
- * // Use the singleton instance
- * const embedding = await embeddingService.textToEmbeddings("text");
- * ```
  */
 export const embeddingService = new EmbeddingService();
