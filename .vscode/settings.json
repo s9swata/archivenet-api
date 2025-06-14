@@ -5,6 +5,7 @@
 		"Eizen",
 		"healthcheck",
 		"hollowdb",
-		"vectordb"
+		"vectordb",
+		"xenova"
 	]
 }
