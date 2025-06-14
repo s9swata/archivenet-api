@@ -196,11 +196,36 @@ export class EmbeddingService {
 				normalize: true,
 			});
 
+			// Safely extract embedding dimension from response
+			let embeddingDim: number;
+			if (response.dims.length >= 2) {
+				embeddingDim = response.dims[1];
+			} else if (response.dims.length === 1) {
+				embeddingDim = response.dims[0];
+			} else {
+				// Fallback to last dimension if dims array is malformed
+				embeddingDim = response.dims.at(-1) ?? 0;
+			}
+
+			// Validate that embeddingDim is valid
+			if (embeddingDim <= 0) {
+				throw new Error(
+					`Invalid embedding dimension: ${embeddingDim}. Response dims: [${response.dims.join(", ")}]`,
+				);
+			}
+
 			const results: EmbeddingResult[] = [];
 			// Calculate start and end indices for this text's embedding
 			for (let i = 0; i < texts.length; i++) {
-				const startIdx = i * response.dims[1];
-				const endIdx = startIdx + response.dims[1];
+				const startIdx = i * embeddingDim;
+				const endIdx = startIdx + embeddingDim;
+
+				// Validate indices are within bounds
+				if (startIdx >= response.data.length || endIdx > response.data.length) {
+					throw new Error(
+						`Index out of bounds: trying to slice [${startIdx}:${endIdx}] from data of length ${response.data.length}`,
+					);
+				}
 
 				// Extract this text's embedding from the flat array
 				const embeddings: VectorEmbedding = Array.from(

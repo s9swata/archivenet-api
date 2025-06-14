@@ -96,7 +96,7 @@ export class MemoryService {
 	async createMemory(data: CreateMemory): Promise<CreateMemoryResult> {
 		try {
 			console.log(
-				`Creating memory from content: "${data.content.substring(0, 50)}..."`,
+				`Creating memory from ${data.content.length} characters of content`,
 			);
 
 			// Step 1: Convert human-readable text into numerical vectors
@@ -359,7 +359,8 @@ export class MemoryService {
 
 			// Filter by minimum importance level
 			if (
-				filters.importance_min &&
+				filters.importance_min !== undefined &&
+				filters.importance_min !== null &&
 				typeof filters.importance_min === "number"
 			) {
 				const importance = (memory.metadata.importance as number) || 0;
