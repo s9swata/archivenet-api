@@ -7,6 +7,12 @@ export function errorHandler(
 	res: Response,
 	next: NextFunction,
 ) {
-	console.error(err);
-	errorResponse(res, 500, err);
+	console.error("Global error handler:", err);
+
+	const response = errorResponse(
+		"Internal server error",
+		err instanceof Error ? err.message : "Unknown error",
+	);
+
+	res.status(500).json(response);
 }
