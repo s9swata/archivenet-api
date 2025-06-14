@@ -24,13 +24,60 @@ export interface MemoryStats {
 }
 
 /**
- * Service class for handling memory operations
- * Bridges between text content and vector storage via Eizen
+ * MemoryService - Core service for semantic memory storage and retrieval via ArchiveNET API
+ *
+ * This service provides a high-level interface for:
+ * - Converting text into searchable vector embeddings
+ * - Storing memories with rich metadata
+ * - Performing semantic similarity searches
+ * - Managing memory lifecycle and statistics
+ *
+ * Architecture:
+ * Text Input → EmbeddingService → Vector → EizenService → Storage
+ * Text Query → EmbeddingService → Vector → EizenService → Similar Memories
+ *
+ * @example
+ * ```typescript
+ * // Create a memory
+ * const result = await memoryService.createMemory({
+ *   content: "User prefers dark mode",
+ *   metadata: { tags: ["preference"], importance: 8 }
+ * });
+ *
+ * // Search memories
+ * const memories = await memoryService.searchMemories({
+ *   query: "user interface preferences",
+ *   k: 5
+ * });
+ * ```
  */
 export class MemoryService {
 	/**
-	 * Create a new memory from text content
-	 * Converts text to embeddings and stores in Eizen
+	 * Creates a new memory from text content
+	 *
+	 * Process:
+	 * 1. Converts text to vector embeddings using Xenova transformers
+	 * 2. Enhances metadata with system information
+	 * 3. Stores the vector in Eizen vector database
+	 *
+	 * @param data - Memory creation parameters
+	 * @param data.content - The text content to store as memory
+	 * @param data.metadata - Optional metadata (tags, importance, etc.)
+	 * @returns Promise resolving to creation result with new memory ID
+	 *
+	 * @throws {Error} When embedding generation or storage fails
+	 *
+	 * @example
+	 * ```typescript
+	 * const memory = await memoryService.createMemory({
+	 *   content: "Client mentioned they work remotely on Fridays",
+	 *   metadata: {
+	 *     tags: ["work-schedule", "client-info"],
+	 *     importance: 7,
+	 *     client: "cursor"
+	 *   }
+	 * });
+	 * ```
 	 */
 	async createMemory(data: CreateMemory): Promise<CreateMemoryResult> {
 		try {
@@ -38,21 +85,21 @@ export class MemoryService {
 				`Creating memory from content: "${data.content.substring(0, 50)}..."`,
 			);
 
-			// Convert text content to vector embeddings
+			// Step 1: Convert human-readable text into numerical vectors
+			// This enables semantic similarity matching later
+			// NOTE: For now we are only embedding the content. Metadata embedding is still in consideration
 			const embeddings = await this.textToEmbeddings(data.content);
 
-			// Enhance metadata with content reference and timestamp
+			// Step 2: Enhance user-provided metadata with system metadata
+			// This ensures we have audit trail and content reference. More key-values can be added later
 			const enhancedMetadata: VectorMetadata = {
 				...data.metadata,
 				content: data.content,
-				createdAt: new Date().toISOString(),
-				contentLength: data.content.length,
-				source: "archivenet-api",
 			};
 
-			// Store vector in Eizen
+			// Step 3: Store the vector and metadata in Eizen vector database
 			const result = await eizenService.insertVector({
-				vector: embeddings,
+				vector: embeddings, // currently API received content == vector // metadata != vector
 				metadata: enhancedMetadata,
 			});
 
@@ -72,23 +119,56 @@ export class MemoryService {
 	}
 
 	/**
-	 * Search memories using natural language query
-	 * Converts query text to embeddings and searches Eizen
+	 * Searches memories using natural language queries
+	 *
+	 * Uses semantic similarity to find relevant memories even when
+	 * exact keywords don't match. For example, searching "coffee"
+	 * might return memories about "espresso" or "caffeine".
+	 *
+	 * Process:
+	 * 1. Converts search query to vector embeddings
+	 * 2. Performs similarity search in vector space
+	 * 3. Applies optional filters (tags, dates, etc.)
+	 * 4. Returns ranked results by similarity
+	 *
+	 * @param data - Search parameters
+	 * @param data.query - Natural language search query
+	 * @param data.k - Maximum number of results to return
+	 * @param data.filters - Optional filters for metadata
+	 * @returns Promise resolving to array of matching memories
+	 *
+	 * @throws {Error} When embedding generation or search fails
+	 *
+	 * @example
+	 * ```typescript
+	 * const results = await memoryService.searchMemories({
+	 *   query: "client communication preferences",
+	 *   k: 10,
+	 *   filters: {
+	 *     tags: ["client-info"],
+	 *     importance_min: 5,
+	 *     date_from: "2024-01-01"
+	 *   }
+	 * });
+	 * ```
 	 */
 	async searchMemories(data: SearchMemory): Promise<MemoryResult[]> {
 		try {
-			console.log(`🔍 Searching memories with query: "${data.query}"`);
+			console.log(`Searching memories with query: "${data.query}"`);
 
-			// Convert search query to vector embeddings
+			// Step 1: Convert search query into the same vector space as stored memories
+			// This enables semantic comparison (similarity matching)
 			const queryEmbeddings = await this.textToEmbeddings(data.query);
 
-			// Search for similar vectors in Eizen
+			// Step 2: Perform vector similarity search in Eizen
+			// Uses cosine similarity or similar algorithms to find closest matches
 			const searchResults = await eizenService.searchVectors({
 				query: queryEmbeddings,
-				k: data.k,
+				k: data.k || 10, // Limit number of results (default is 10)
 			});
 
-			// Transform results to memory format
+			// Step 3: Transform Eizen results into our memory format
+			// Extract content from metadata for easier access
 			const memories: MemoryResult[] = searchResults.map((result) => ({
 				id: result.id,
 				content: (result.metadata?.content as string) || undefined,
@@ -96,7 +176,9 @@ export class MemoryService {
 				distance: result.distance,
 			}));
 
-			// Apply filters if provided
+			// Step 4: Apply additional filters based on metadata
+			// This allows filtering by tags, dates, importance, etc.
+			// NOTE: Still theoretical. may not work properly
 			const filteredMemories = this.applyFilters(memories, data.filters);
 
 			console.log(`Found ${filteredMemories.length} relevant memories`);
@@ -111,18 +193,36 @@ export class MemoryService {
 	}
 
 	/**
-	 * Get a specific memory by its ID
+	 * Retrieves a specific memory by its unique identifier
+	 *
+	 * Used when user have a memory ID and need to fetch its full content
+	 * and metadata. Unlike search, this is a direct lookup operation.
+	 *
+	 * @param memoryId - The unique ID of the memory to retrieve
+	 * @returns Promise resolving to memory data or null if not found
+	 *
+	 * @throws {Error} When retrieval operation fails
+	 *
+	 * @example
+	 * ```typescript
+	 * const memory = await memoryService.getMemory(123);
+	 * if (memory) {
+	 *   console.log(`Memory content: ${memory.content}`);
+	 * }
+	 * ```
 	 */
 	async getMemory(memoryId: number): Promise<MemoryResult | null> {
 		try {
 			console.log(`Retrieving memory with ID: ${memoryId}`);
 
+			// Direct lookup in Eizen by vector ID
 			const vector = await eizenService.getVector(memoryId);
 
 			if (!vector) {
 				return null;
 			}
 
+			// Transform Eizen vector into our memory format
 			return {
 				id: memoryId,
 				content: (vector.metadata?.content as string) || undefined,
@@ -137,7 +237,21 @@ export class MemoryService {
 	}
 
 	/**
-	 * Get memory service statistics
+	 * Retrieves system statistics and health information
+	 *
+	 * Useful for monitoring, debugging, and displaying system status
+	 * to users. Aggregates data from both Eizen and embedding services.
+	 *
+	 * @returns Promise resolving to current system statistics
+	 *
+	 * @example
+	 * ```typescript
+	 * const stats = await memoryService.getStats();
+	 * console.log(`Total memories: ${stats.totalMemories}`);
+	 * console.log(`System ready: ${stats.isInitialized}`);
+	 * ```
+	 *
+	 * @TODO Need further work
 	 */
 	async getStats(): Promise<MemoryStats> {
 		try {
@@ -162,7 +276,17 @@ export class MemoryService {
 	}
 
 	/**
-	 * Convert text to vector embeddings using the EmbeddingService
+	 * Converts text content into numerical vector embeddings
+	 *
+	 * This is the core ML operation that enables semantic search.
+	 * Uses transformer models (via Xenova) to create high-dimensional
+	 * vectors that capture semantic meaning of text.
+	 *
+	 * @private This is an internal helper method
+	 * @param text - The text content to vectorize
+	 * @returns Promise resolving to numerical embedding array
+	 *
+	 * @throws {Error} When embedding generation fails
 	 */
 	private async textToEmbeddings(text: string): Promise<number[]> {
 		try {
@@ -179,20 +303,33 @@ export class MemoryService {
 	}
 
 	/**
-	 * Apply search filters to memory results
+	 * Applies metadata-based filters to search results
+	 *
+	 * Filters allow users to narrow down search results based on:
+	 * - Tags (categories, labels)
+	 * - Importance level (numerical rating)
+	 * - Client/source information
+	 * - Date ranges (creation or custom timestamps)
+	 *
+	 * @private This is an internal helper method
+	 * @param memories - Array of memory results to filter
+	 * @param filters - Optional filter criteria
+	 * @returns Filtered array of memories
 	 */
 	private applyFilters(
 		memories: MemoryResult[],
 		filters?: SearchFilters,
 	): MemoryResult[] {
+		// If no filters provided, return all results unchanged
 		if (!filters) {
 			return memories;
 		}
 
 		return memories.filter((memory) => {
+			// Skip filtering if memory has no metadata
 			if (!memory.metadata) return true;
 
-			// Filter by tags
+			// Filter by tags - check if memory has any of the requested tags
 			if (filters.tags && Array.isArray(filters.tags)) {
 				const memoryTags = (memory.metadata.tags as string[]) || [];
 				const hasRequiredTags = filters.tags.some((tag: string) =>
@@ -201,7 +338,7 @@ export class MemoryService {
 				if (!hasRequiredTags) return false;
 			}
 
-			// Filter by minimum importance
+			// Filter by minimum importance level
 			if (
 				filters.importance_min &&
 				typeof filters.importance_min === "number"
@@ -210,21 +347,23 @@ export class MemoryService {
 				if (importance < filters.importance_min) return false;
 			}
 
-			// Filter by client
+			// Filter by client - partial string matching
 			if (filters.client && typeof filters.client === "string") {
 				const client = (memory.metadata.client as string) || "";
 				if (!client.includes(filters.client)) return false;
 			}
 
-			// Filter by date range
+			// Filter by date range - check creation date or custom timestamp
 			if (filters.date_from || filters.date_to) {
 				const timestamp =
 					(memory.metadata.timestamp as string) ||
 					(memory.metadata.createdAt as string);
 				if (timestamp) {
 					const memoryDate = new Date(timestamp);
+					// Check if memory is after start date
 					if (filters.date_from && memoryDate < new Date(filters.date_from))
 						return false;
+					// Check if memory is before end date
 					if (filters.date_to && memoryDate > new Date(filters.date_to))
 						return false;
 				}
@@ -235,5 +374,24 @@ export class MemoryService {
 	}
 }
 
-// Create singleton instance
+/**
+ * Singleton instance of MemoryService
+ *
+ * Using a singleton pattern ensures:
+ * - Single point of configuration
+ * - Shared state across the application
+ * - Easy dependency injection
+ *
+ * Import this instance rather than creating new MemoryService instances
+ *
+ * @example
+ * ```typescript
+ * import { memoryService } from './services/MemoryService.js';
+ *
+ * const results = await memoryService.searchMemories({
+ *   query: "user preferences",
+ *   k: 5
+ * });
+ * ```
+ */
 export const memoryService = new MemoryService();

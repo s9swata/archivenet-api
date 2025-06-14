@@ -1,7 +1,6 @@
 import { pipeline } from "@xenova/transformers";
 import type { VectorEmbedding } from "../schemas/eizen.js";
 
-// Type for the embedding pipeline function
 type EmbeddingPipeline = (
 	texts: string[],
 	options?: { pooling?: string; normalize?: boolean },
@@ -17,23 +16,52 @@ export interface EmbeddingResult {
 }
 
 /**
- * Service class for converting text to vector embeddings using Xenova/transformers
- * Handles text embedding generation for memory storage in Eizen
+ * Service class for converting text to vector embeddings using transformer language models.
+ *
+ * This service provides a high-level interface for text ----> vector conversion using
+ * the Xenova transformers library. It handles model loading, initialization, and
+ * provides both single and batch processing capabilities.
+ *
+ * Technical Details:
+ * - Uses the "all-MiniLM-L6-v2" model (384-dimensional embeddings)
+ * - Employs mean pooling to combine token-level embeddings
+ * - Outputs are L2-normalized for consistent similarity calculations
  */
 export class EmbeddingService {
 	private extractor: EmbeddingPipeline | null = null;
 	private isInitialized = false;
+	/**
+	 * all-MiniLM-L6-v2 is a lightweight, fast model that produces `384-dimensional` embeddings.
+	 *  @see https://huggingface.co/Xenova/all-MiniLM-L6-v2
+	 */
 	private readonly modelName = "Xenova/all-MiniLM-L6-v2";
 
+	/**
+	 * Creates a new EmbeddingService instance and begins asynchronous initialization.
+	 *
+	 * The initialization happens in the background to avoid blocking the constructor.
+	 * If initialization fails, it will be retried when the service is first used.
+	 */
 	constructor() {
-		// Initialize asynchronously
 		this.initialize().catch((error) => {
 			console.error("Failed to initialize EmbeddingService:", error);
+			// Note: We don't throw here to allow for retry on first use
 		});
 	}
 
 	/**
-	 * Initialize the embedding pipeline
+	 * Loads the transformer model and prepares the feature-extraction pipeline.
+	 *
+	 * This method handles the heavy lifting of downloading and initializing the
+	 * transformer model. The model files are cached locally after first download.
+	 *
+	 * Process:
+	 * 1. Downloads model files (if not cached)
+	 * 2. Initializes the feature-extraction pipeline
+	 * 3. Marks service as ready for use
+	 *
+	 * @private
+	 * @throws {Error} If model loading or pipeline initialization fails
 	 */
 	private async initialize(): Promise<void> {
 		try {
@@ -43,7 +71,7 @@ export class EmbeddingService {
 			this.extractor = (await pipeline(
 				"feature-extraction",
 				this.modelName,
-			)) as EmbeddingPipeline;
+			)) as EmbeddingPipeline; // This may take time on first run as it downloads model files
 
 			this.isInitialized = true;
 			console.log("EmbeddingService initialized successfully");
@@ -67,7 +95,28 @@ export class EmbeddingService {
 	}
 
 	/**
-	 * Convert text to vector embeddings
+	 * Converts a single text string into a vector embedding.
+	 *
+	 * This is the primary method for single-text embedding generation. The input
+	 * text is processed through the transformer model to produce a normalized
+	 * vector representation suitable for similarity calculations.
+	 *
+	 * Processing steps:
+	 * 1. Tokenize the input text
+	 * 2. Generate token-level embeddings
+	 * 3. Apply mean pooling to create sentence-level embedding
+	 * 4. L2-normalize the final vector
+	 *
+	 * @param text - The input string to convert to a vector embedding
+	 * @returns Promise resolving to an EmbeddingResult with the vector and metadata
+	 * @throws {Error} If the service is not initialized or embedding generation fails
+	 *
+	 * @example
+	 * ```typescript
+	 * const result = await embeddingService.textToEmbeddings("machine learning");
+	 * console.log(`Generated ${result.dimensions}D embedding for text`);
+	 * console.log(`First few values: ${result.embeddings.slice(0, 5)}`);
+	 * ```
 	 */
 	async textToEmbeddings(text: string): Promise<EmbeddingResult> {
 		await this.ensureInitialized();
@@ -81,11 +130,14 @@ export class EmbeddingService {
 				`Converting text to embeddings: "${text.substring(0, 50)}..."`,
 			);
 
+			// The pipeline returns a Float32Array (or number[]) and dims describing its shape.
 			const response = await this.extractor([text], {
-				pooling: "mean",
-				normalize: true,
+				pooling: "mean", // Mean-pool token embeddings to get sentence embedding
+				normalize: true, // L2-normalize for consistent similarity calculations
 			});
 
+			// Convert to plain number[] for easier downstream use & JSON serialization
+			// Float32Array is not JSON-serializable, so we convert to regular array
 			const embeddings: VectorEmbedding = Array.from(response.data);
 
 			console.log(`Generated ${embeddings.length}-dimensional embeddings`);
@@ -104,7 +156,22 @@ export class EmbeddingService {
 	}
 
 	/**
-	 * Convert multiple texts to embeddings in batch
+	 * Processes multiple texts in a single batch operation for improved efficiency.
+	 *
+	 * Batch processing is more efficient than individual calls when dealing with
+	 * multiple texts, as it reduces the overhead of model inference. The transformer
+	 * model can process multiple texts simultaneously, making this method ideal for
+	 * bulk operations.
+	 *
+	 * Performance benefits:
+	 * - Reduced per-text overhead
+	 * - Better GPU utilization (if available)
+	 * - Lower memory allocation overhead
+	 *
+	 * @param texts - Array of strings to convert to embeddings
+	 * @returns Promise resolving to array of EmbeddingResult objects in the same order as input
+	 * @throws {Error} If the service is not initialized or batch processing fails
+	 *
 	 */
 	async batchTextToEmbeddings(texts: string[]): Promise<EmbeddingResult[]> {
 		await this.ensureInitialized();
@@ -116,15 +183,19 @@ export class EmbeddingService {
 		try {
 			console.log(`Converting ${texts.length} texts to embeddings (batch)`);
 
+			// Process all texts in a single pipeline call for efficiency
 			const response = await this.extractor(texts, {
 				pooling: "mean",
 				normalize: true,
 			});
 
 			const results: EmbeddingResult[] = [];
+			// Calculate start and end indices for this text's embedding
 			for (let i = 0; i < texts.length; i++) {
 				const startIdx = i * response.dims[1];
 				const endIdx = startIdx + response.dims[1];
+
+				// Extract this text's embedding from the flat array
 				const embeddings: VectorEmbedding = Array.from(
 					response.data.slice(startIdx, endIdx),
 				);
@@ -147,7 +218,9 @@ export class EmbeddingService {
 	}
 
 	/**
-	 * Get embedding service information
+	 * Returns metadata about the service's current state and configuration.
+	 *
+	 * @returns Object containing model name and initialization status
 	 */
 	getInfo(): { model: string; isInitialized: boolean } {
 		return {
@@ -157,5 +230,23 @@ export class EmbeddingService {
 	}
 }
 
-// Create singleton instance
+/**
+ * Singleton instance of EmbeddingService for application-wide use.
+ *
+ * This singleton pattern ensures that:
+ * - Only one model is loaded in memory at a time
+ * - Initialization overhead is minimized
+ * - Consistent behavior across the application
+ *
+ * Import and use this instance throughout the api instead of
+ * creating new EmbeddingService instances.
+ *
+ * @example
+ * ```typescript
+ * import { embeddingService } from './services/EmbeddingService';
+ *
+ * // Use the singleton instance
+ * const embedding = await embeddingService.textToEmbeddings("text");
+ * ```
+ */
 export const embeddingService = new EmbeddingService();
