@@ -179,6 +179,7 @@ export class EmbeddingService {
 	 * @returns Promise resolving to array of EmbeddingResult objects in the same order as input
 	 * @throws {Error} If the service is not initialized or batch processing fails
 	 *
+	 * @TODO Need further work and tests
 	 */
 	async batchTextToEmbeddings(texts: string[]): Promise<EmbeddingResult[]> {
 		await this.ensureInitialized();
@@ -196,16 +197,9 @@ export class EmbeddingService {
 				normalize: true,
 			});
 
-			// Safely extract embedding dimension from response
-			let embeddingDim: number;
-			if (response.dims.length >= 2) {
-				embeddingDim = response.dims[1];
-			} else if (response.dims.length === 1) {
-				embeddingDim = response.dims[0];
-			} else {
-				// Fallback to last dimension if dims array is malformed
-				embeddingDim = response.dims.at(-1) ?? 0;
-			}
+			// Extract embedding dimension as the last axis of the tensor
+			// This works correctly for tensors of any dimensionality (1D, 2D, 3D, etc.)
+			const embeddingDim = response.dims.at(-1) ?? 0;
 
 			// Validate that embeddingDim is valid
 			if (embeddingDim <= 0) {
@@ -214,29 +208,64 @@ export class EmbeddingService {
 				);
 			}
 
-			const results: EmbeddingResult[] = [];
-			// Calculate start and end indices for this text's embedding
-			for (let i = 0; i < texts.length; i++) {
-				const startIdx = i * embeddingDim;
-				const endIdx = startIdx + embeddingDim;
+			// Validate batch dimension matches expected number of texts
+			const batchDim = response.dims[0] ?? 0;
+			if (batchDim !== texts.length) {
+				throw new Error(
+					`Batch dimension mismatch: expected ${texts.length} texts but got batch size ${batchDim}. Response dims: [${response.dims.join(", ")}]`,
+				);
+			}
 
-				// Validate indices are within bounds
-				if (startIdx >= response.data.length || endIdx > response.data.length) {
+			const results: EmbeddingResult[] = [];
+
+			// Handle different tensor shapes properly
+			if (response.dims.length === 1) {
+				// 1D case: single embedding flattened
+				if (texts.length !== 1) {
 					throw new Error(
-						`Index out of bounds: trying to slice [${startIdx}:${endIdx}] from data of length ${response.data.length}`,
+						`Expected 1 text for 1D tensor, got ${texts.length} texts`,
 					);
 				}
-
-				// Extract this text's embedding from the flat array
-				const embeddings: VectorEmbedding = Array.from(
-					response.data.slice(startIdx, endIdx),
-				);
-
+				const embeddings: VectorEmbedding = Array.from(response.data);
 				results.push({
 					embeddings,
 					dimensions: embeddings.length,
 					model: this.modelName,
 				});
+			} else if (response.dims.length === 2) {
+				// 2D case: [batch_size, embedding_dim] - most common case
+				for (let i = 0; i < texts.length; i++) {
+					const startIdx = i * embeddingDim;
+					const endIdx = startIdx + embeddingDim;
+
+					// Validate indices are within bounds
+					if (
+						startIdx >= response.data.length ||
+						endIdx > response.data.length
+					) {
+						throw new Error(
+							`Index out of bounds: trying to slice [${startIdx}:${endIdx}] from data of length ${response.data.length}`,
+						);
+					}
+
+					// Extract this text's embedding from the flat array
+					const embeddings: VectorEmbedding = Array.from(
+						response.data.slice(startIdx, endIdx),
+					);
+
+					results.push({
+						embeddings,
+						dimensions: embeddings.length,
+						model: this.modelName,
+					});
+				}
+			} else {
+				// 3D+ case: [batch_size, sequence_length, embedding_dim] or higher
+				// For mean pooling, the result should still be [batch_size, embedding_dim]
+				// If we get here, it might indicate the pooling didn't work as expected
+				throw new Error(
+					`Unexpected tensor dimensionality: ${response.dims.length}D tensor with dims [${response.dims.join(", ")}]. Expected 1D or 2D after pooling.`,
+				);
 			}
 
 			console.log(`Generated embeddings for ${results.length} texts`);
