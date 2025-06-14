@@ -1,7 +1,7 @@
 import type { SearchFilters } from "../schemas/common.js";
 import type { VectorMetadata } from "../schemas/eizen.js";
 import type { CreateMemory, SearchMemory } from "../schemas/memory.js";
-import { eizenService } from "./EizenService.js";
+import type { EizenService } from "./EizenService.js";
 import { embeddingService } from "./EmbeddingService.js";
 
 export interface MemoryResult {
@@ -38,6 +38,10 @@ export interface MemoryStats {
  *
  * @example
  * ```typescript
+ * // Create memory service for a specific user
+ * const userEizenService = await EizenService.forContract(userContractId);
+ * const memoryService = new MemoryService(userEizenService);
+ *
  * // Create a memory
  * const result = await memoryService.createMemory({
  *   content: "User prefers dark mode",
@@ -52,6 +56,16 @@ export interface MemoryStats {
  * ```
  */
 export class MemoryService {
+	private eizenService: EizenService;
+
+	/**
+	 * Creates a new MemoryService instance for a specific user
+	 *
+	 * @param eizenService - User-specific EizenService instance
+	 */
+	constructor(eizenService: EizenService) {
+		this.eizenService = eizenService;
+	}
 	/**
 	 * Creates a new memory from text content
 	 *
@@ -96,9 +110,8 @@ export class MemoryService {
 				...data.metadata,
 				content: data.content,
 			};
-
 			// Step 3: Store the vector and metadata in Eizen vector database
-			const result = await eizenService.insertVector({
+			const result = await this.eizenService.insertVector({
 				vector: embeddings, // currently API received content == vector // metadata != vector
 				metadata: enhancedMetadata,
 			});
@@ -162,7 +175,7 @@ export class MemoryService {
 
 			// Step 2: Perform vector similarity search in Eizen
 			// Uses cosine similarity or similar algorithms to find closest matches
-			const searchResults = await eizenService.searchVectors({
+			const searchResults = await this.eizenService.searchVectors({
 				query: queryEmbeddings,
 				k: data.k || 10, // Limit number of results (default is 10)
 			});
@@ -216,7 +229,7 @@ export class MemoryService {
 			console.log(`Retrieving memory with ID: ${memoryId}`);
 
 			// Direct lookup in Eizen by vector ID
-			const vector = await eizenService.getVector(memoryId);
+			const vector = await this.eizenService.getVector(memoryId);
 
 			if (!vector) {
 				return null;
@@ -251,11 +264,11 @@ export class MemoryService {
 	 * console.log(`System ready: ${stats.isInitialized}`);
 	 * ```
 	 *
-	 * @TODO Need further work
+	 * @TODO Need further work (Probably wrote it in diff file)
 	 */
 	async getStats(): Promise<MemoryStats> {
 		try {
-			const eizenStats = await eizenService.getStats();
+			const eizenStats = await this.eizenService.getStats();
 			const embeddingInfo = embeddingService.getInfo();
 
 			return {
@@ -274,6 +287,12 @@ export class MemoryService {
 			};
 		}
 	}
+
+	// ============================================================================
+	// Internal Helper Functions
+	// These methods support the main public API but are not intended to be used
+	// directly by external callers.
+	// ============================================================================
 
 	/**
 	 * Converts text content into numerical vector embeddings
@@ -373,25 +392,3 @@ export class MemoryService {
 		});
 	}
 }
-
-/**
- * Singleton instance of MemoryService
- *
- * Using a singleton pattern ensures:
- * - Single point of configuration
- * - Shared state across the application
- * - Easy dependency injection
- *
- * Import this instance rather than creating new MemoryService instances
- *
- * @example
- * ```typescript
- * import { memoryService } from './services/MemoryService.js';
- *
- * const results = await memoryService.searchMemories({
- *   query: "user preferences",
- *   k: 5
- * });
- * ```
- */
-export const memoryService = new MemoryService();
