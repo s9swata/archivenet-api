@@ -5,6 +5,8 @@ import { EizenService } from "../services/EizenService.js";
 import { MemoryService } from "../services/MemoryService.js";
 import { errorResponse, successResponse } from "../utils/responses.js";
 
+//  User-facing semantic memory API
+
 const router = Router();
 
 // TODO: Replace this with actual user lookup from SQL database
