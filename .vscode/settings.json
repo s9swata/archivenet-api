@@ -6,6 +6,7 @@
 		"healthcheck",
 		"hollowdb",
 		"vectordb",
+		"Vyse",
 		"xenova"
 	]
 }
