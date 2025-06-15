@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { EizenService } from "../services/EizenService.js";
+import { embeddingService } from "../services/EmbeddingService.js";
 import { MemoryService } from "../services/MemoryService.js";
 import { errorResponse, successResponse } from "../utils/responses.js";
 
@@ -65,13 +66,23 @@ router.get("/detailed", async (req, res) => {
 		};
 
 		// Service configuration
+		const embeddingInfo = embeddingService.getInfo();
+		const allowedOrigins = process.env.ORIGIN?.split(",").map((origin) =>
+			origin.trim(),
+		) || ["http://localhost:3000"];
+
 		const config = {
 			arweaveGateway: process.env.ARWEAVE_GATEWAY,
 			hasServiceWallet: !!process.env.SERVICE_WALLET_ADDRESS,
 			hasEizenContract: !!process.env.EIZEN_CONTRACT_ID,
 			hasRedis: !!process.env.REDIS_URL,
-			embeddingService: process.env.OPENAI_API_KEY ? "openai" : "mock",
+			embeddingService: embeddingInfo.isInitialized ? "xenova" : "unavailable",
 			architecture: "multi-tenant",
+			cors: {
+				allowedOrigins: allowedOrigins,
+				credentialsEnabled: true,
+				originCount: allowedOrigins.length,
+			},
 		};
 
 		const healthData = {
@@ -86,6 +97,7 @@ router.get("/detailed", async (req, res) => {
 				eizen: eizenStats
 					? {
 							initialized: eizenStats.isInitialized,
+							ServiceWallet: process.env.SERVICE_WALLET_ADDRESS,
 							totalVectors: eizenStats.totalVectors,
 							contractId: eizenStats.contractId,
 						}
@@ -96,7 +108,9 @@ router.get("/detailed", async (req, res) => {
 					? {
 							initialized: memoryStats.isInitialized,
 							totalMemories: memoryStats.totalMemories,
-							embeddingService: memoryStats.embeddingService,
+							embeddingModel: embeddingInfo.isInitialized
+								? embeddingInfo.model
+								: "unavailable",
 						}
 					: {
 							status: "no fallback contract configured",
@@ -211,9 +225,8 @@ router.get("/memory", async (req, res) => {
 					totalMemories: stats.totalMemories,
 					embeddingService: stats.embeddingService,
 					configuration: {
-						hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-						embeddingModel:
-							process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+						embeddingService: stats.embeddingService,
+						embeddingModel: embeddingService.getInfo().model,
 					},
 					architecture: "multi-tenant",
 				},
