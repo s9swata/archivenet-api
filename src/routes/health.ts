@@ -67,9 +67,9 @@ router.get("/detailed", async (req, res) => {
 
 		// Service configuration
 		const embeddingInfo = embeddingService.getInfo();
-		const allowedOrigins = process.env.ORIGIN?.split(",").map((origin) =>
-			origin.trim(),
-		) || ["http://localhost:3000"];
+		const allowedOrigins = process.env.ORIGIN?.split(",")
+			.map((origin) => origin.trim())
+			.filter((origin) => origin.length > 0) || ["http://localhost:3000"];
 
 		const config = {
 			arweaveGateway: process.env.ARWEAVE_GATEWAY,
@@ -97,12 +97,15 @@ router.get("/detailed", async (req, res) => {
 				eizen: eizenStats
 					? {
 							initialized: eizenStats.isInitialized,
-							ServiceWallet: process.env.SERVICE_WALLET_ADDRESS,
 							totalVectors: eizenStats.totalVectors,
 							contractId: eizenStats.contractId,
+							note: "Stats from admin fallback contract",
 						}
 					: {
-							status: "no fallback contract configured",
+							status: "operational",
+							note: "Service available - uses user-provided contract IDs",
+							adminFallback:
+								"not configured (optional for admin operations only)",
 						},
 				memory: memoryStats
 					? {
@@ -111,9 +114,19 @@ router.get("/detailed", async (req, res) => {
 							embeddingModel: embeddingInfo.isInitialized
 								? embeddingInfo.model
 								: "unavailable",
+							note: "Stats from admin fallback contract",
 						}
 					: {
-							status: "no fallback contract configured",
+							status: "operational",
+							embeddingService: embeddingInfo.isInitialized
+								? "xenova"
+								: "unavailable",
+							embeddingModel: embeddingInfo.isInitialized
+								? embeddingInfo.model
+								: "unavailable",
+							note: "Service available - uses user-provided contract IDs",
+							adminFallback:
+								"not configured (optional for admin operations only)",
 						},
 			},
 		};
@@ -146,9 +159,16 @@ router.get("/eizen", async (req, res) => {
 				successResponse(
 					{
 						service: "Eizen Vector Database",
-						status: "not configured",
-						message: "No fallback contract ID configured for health checks",
+						status: "operational",
+						message: "Service available - uses user-provided contract IDs",
 						architecture: "multi-tenant",
+						adminFallback:
+							"not configured (optional for admin operations only)",
+						parameters: {
+							m: process.env.EIZEN_M || 16,
+							efConstruction: process.env.EIZEN_EF_CONSTRUCTION || 200,
+							efSearch: process.env.EIZEN_EF_SEARCH || 50,
+						},
 					},
 					"Eizen service health check",
 				),
@@ -203,9 +223,17 @@ router.get("/memory", async (req, res) => {
 				successResponse(
 					{
 						service: "Memory Management",
-						status: "not configured",
-						message: "No fallback contract ID configured for health checks",
+						status: "operational",
+						message: "Service available - uses user-provided contract IDs",
 						architecture: "multi-tenant",
+						adminFallback:
+							"not configured (optional for admin operations only)",
+						embeddingService: embeddingService.getInfo().isInitialized
+							? "xenova"
+							: "unavailable",
+						embeddingModel: embeddingService.getInfo().isInitialized
+							? embeddingService.getInfo().model
+							: "unavailable",
 					},
 					"Memory service health check",
 				),
@@ -226,7 +254,9 @@ router.get("/memory", async (req, res) => {
 					embeddingService: stats.embeddingService,
 					configuration: {
 						embeddingService: stats.embeddingService,
-						embeddingModel: embeddingService.getInfo().model,
+						embeddingModel: embeddingService.getInfo().isInitialized
+							? embeddingService.getInfo().model
+							: "unavailable",
 					},
 					architecture: "multi-tenant",
 				},
