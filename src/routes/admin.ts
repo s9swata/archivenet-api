@@ -148,49 +148,54 @@ router.post("/search", validateData(searchVectorSchema), async (req, res) => {
  *   "message": "Vector retrieved successfully"
  * }
  */
-router.get("/:id", async (req: Request, res: Response): Promise<void> => {
-	try {
-		const eizenService = await getAdminEizenService(req);
-		const vectorId = Number.parseInt(req.params.id, 10);
+router.get(
+	"/vector/:id",
+	async (req: Request, res: Response): Promise<void> => {
+		try {
+			const eizenService = await getAdminEizenService(req);
+			const vectorId = Number.parseInt(req.params.id, 10);
 
-		if (Number.isNaN(vectorId)) {
+			if (Number.isNaN(vectorId)) {
+				res
+					.status(400)
+					.json(
+						errorResponse("Invalid vector ID", "Vector ID must be a number"),
+					);
+				return;
+			}
+
+			const vector = await eizenService.getVector(vectorId);
+
+			if (!vector) {
+				res
+					.status(404)
+					.json(
+						errorResponse(
+							"Vector not found",
+							`No vector found with ID: ${vectorId}`,
+						),
+					);
+				return;
+			}
+
+			res.json(successResponse(vector, "Vector retrieved successfully"));
+		} catch (error) {
+			console.error("Admin vector get error:", error);
 			res
-				.status(400)
-				.json(errorResponse("Invalid vector ID", "Vector ID must be a number"));
-			return;
-		}
-
-		const vector = await eizenService.getVector(vectorId);
-
-		if (!vector) {
-			res
-				.status(404)
+				.status(500)
 				.json(
 					errorResponse(
-						"Vector not found",
-						`No vector found with ID: ${vectorId}`,
+						"Failed to retrieve vector",
+						error instanceof Error ? error.message : "Unknown error",
 					),
 				);
-			return;
 		}
-
-		res.json(successResponse(vector, "Vector retrieved successfully"));
-	} catch (error) {
-		console.error("Admin vector get error:", error);
-		res
-			.status(500)
-			.json(
-				errorResponse(
-					"Failed to retrieve vector",
-					error instanceof Error ? error.message : "Unknown error",
-				),
-			);
-	}
-});
+	},
+);
 
 /**
- * GET /admin/stats
- * Get database statistics and system information
+ * GET /admin/
+ * Get Admin database statistics and system information
  *
  * Admin Use Case: Monitor database health, storage metrics, and performance stats
  *
