@@ -1,29 +1,41 @@
-import type { Request, Response, NextFunction } from "express";
 import jwt, { type JwtPayload } from "jsonwebtoken";
+import jwksClient from "jwks-rsa";
+import type { Request, Response, NextFunction } from "express";
+
+if (!process.env.CLERK_JWKS_URI) {
+    throw new Error("CLERK_JWKS_URI environment variable is not set");
+}
+
+const client = jwksClient({
+    jwksUri: process.env.CLERK_JWKS_URI || "",
+    cache: true,
+    rateLimit: true,
+    jwksRequestsPerMinute: 10, // Default is 10, adjust as needed
+    cacheMaxEntries: 5, // Default is 5, adjust as needed
+    cacheMaxAge: 600000, // Default is 10 minutes, adjust as needed
+});
+
+const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
+    client.getSigningKey(header.kid, (err, key) => {
+        if (err) return callback(err);
+        const signingKey = key?.getPublicKey();
+        callback(null, signingKey);
+    });
+};
 
 export const auth = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers["authorization"];
     const token = authHeader?.split(" ")[1];
 
-    try{
-        if (!token || process.env.CLERK_JWT_KEY === undefined) {
-            res.status(401).json({
-                message: "erorr while decoding jwt, token is missing or clerk jwt key is not set"
-            });
-            return;
-        }
-        const decoded = jwt.verify(token, process.env.CLERK_JWT_KEY, {
-            algorithms: ['RS256']
-        }) as JwtPayload;
-        if (decoded?.sub){
-            req.userId = decoded?.sub;
-            next()
-        }
+    if (!token) {
+        return res.status(401).json({ message: "No token provided" });
     }
-    catch(e){
-        res.status(403).json({
-            message: "Error while decoding jwt"
-        })
-        
-    }
-} 
+
+    jwt.verify(token, getKey, { algorithms: ["RS256"] }, (err, decoded) => {
+        if (err || !decoded || typeof decoded === "string") {
+            return res.status(403).json({ message: "JWT verification failed" });
+        }
+        req.userId = (decoded as JwtPayload).sub;
+        next();
+    });
+};

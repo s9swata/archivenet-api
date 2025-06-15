@@ -59,6 +59,7 @@
 		"http-status-codes": "^2.3.0",
 		"ioredis": "^5.6.1",
 		"jsonwebtoken": "^9.0.2",
+		"jwks-rsa": "^3.2.0",
 		"uuid": "^11.1.0",
 		"vitest": "^3.2.3",
 		"warp-contracts": "^1.4.45",
